@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block title %}{{ formTitle }} — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/student/projects/" class="btn btn-light border"><i class="fas fa-arrow-left"></i></a>
+  <div>
+    <h3 class="fw-bold mb-0" style="color:var(--text-main);">
+      <i class="fas fa-diagram-project text-primary me-2"></i>{{ formTitle }}
+    </h3>
+    <p class="text-muted small mb-0">Fields marked <span class="text-danger">*</span> are required.</p>
+  </div>
+</div>
+
+<form method="POST" action="{{ formAction }}" id="projectForm">
+  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+  {# ══════════════════════════════════════
+     SECTION 1 — Core Info
+  ══════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-info-circle me-2"></i>1. Project Information
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Project Title <span class="text-danger">*</span></label>
+          <input type="text" name="title" class="form-control" required
+                 placeholder="e.g. Placement Management System"
+                 value="{{ project.title if project else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Project Type <span class="text-danger">*</span></label>
+          <select name="projectType" id="projectType" class="form-select" required
+                  onchange="toggleLiveFields(this.value)">
+            <option value="" disabled {% if not project %}selected{% endif %}>— Select Type —</option>
+            <option value="LIVE"   {% if project and project.projectType == 'LIVE' %}selected{% endif %}>
+              🌐 Live Project
+            </option>
+            <option value="NORMAL" {% if project and project.projectType == 'NORMAL' %}selected{% endif %}>
+              📘 Academic Project
+            </option>
+          </select>
+          <div class="form-text">
+            <strong>Live</strong> = real-world/client project &nbsp;|&nbsp;
+            <strong>Academic</strong> = academic/personal project
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Domain / Technology</label>
+          <input type="text" name="domain" class="form-control"
+                 placeholder="e.g. Web Development, Machine Learning"
+                 value="{{ project.domain if project else '' }}">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Technologies Used</label>
+          <input type="text" name="technologiesUsed" class="form-control"
+                 placeholder="e.g. Java, Spring Boot, MySQL (comma-separated)"
+                 value="{{ project.technologiesUsed if project else '' }}">
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Project Description</label>
+          <textarea name="description" class="form-control" rows="3"
+                    placeholder="What does this project do? What problem does it solve?">{{ project.description if project else '' }}</textarea>
+        </div>
+
+        {# Live project extra field — hidden for Normal #}
+        <div class="col-md-6" id="clientOrgBlock"
+             style="{{ '' if (project and project.projectType == 'LIVE') else 'display:none;' }}">
+          <label class="form-label fw-semibold">Client / Organization
+            <span class="text-muted fw-normal">(Optional — Live Projects)</span>
+          </label>
+          <input type="text" name="clientOrOrganization" class="form-control"
+                 placeholder="e.g. ABC Hospital, XYZ College"
+                 value="{{ project.clientOrOrganization if project else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════
+     SECTION 2 — Role & Duration
+  ══════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-user-cog me-2"></i>2. Role &amp; Duration
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Your Role / Contribution</label>
+          <input type="text" name="role" class="form-control"
+                 placeholder="e.g. Backend Developer, Team Lead"
+                 value="{{ project.role if project else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Project Status</label>
+          <select name="projectStatus" class="form-select">
+            {% for s in ['Completed', 'Ongoing', 'On Hold'] %}
+            <option value="{{ s }}"
+              {% if project and project.projectStatus == s %}selected
+              {% elif not project and s == 'Completed' %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Duration
+            <span class="text-muted fw-normal">(auto-calculated or manual)</span>
+          </label>
+          <input type="text" name="duration" id="durationDisplay" class="form-control"
+                 placeholder="e.g. 3 months (auto-filled from dates)"
+                 value="{{ project.duration if project else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Start Date</label>
+          <input type="date" name="startDate" id="startDate" class="form-control"
+                 value="{{ project.startDate if project else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">End Date</label>
+          <input type="date" name="endDate" id="endDate" class="form-control"
+                 value="{{ project.endDate if project else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════
+     SECTION 3 — Links & Team
+  ══════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-link me-2"></i>3. Links &amp; Team
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Project / Live URL</label>
+          <input type="url" name="projectUrl" class="form-control"
+                 placeholder="https://example.com/project"
+                 value="{{ project.projectUrl if project else '' }}">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">GitHub / Repository URL</label>
+          <input type="url" name="githubUrl" class="form-control"
+                 placeholder="https://github.com/username/repo"
+                 value="{{ project.githubUrl if project else '' }}">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Team Size</label>
+          <input type="number" name="teamSize" class="form-control" min="1"
+                 placeholder="e.g. 3"
+                 value="{{ project.teamSize if project else '' }}">
+        </div>
+
+        <div class="col-md-9">
+          <label class="form-label fw-semibold">Team Members
+            <span class="text-muted fw-normal">(Optional, comma-separated)</span>
+          </label>
+          <input type="text" name="teamMembers" class="form-control"
+                 placeholder="e.g. Rahul Sharma, Priya Patel"
+                 value="{{ project.teamMembers if project else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mb-5">
+    <a href="/student/projects/" class="btn btn-light border px-4">Cancel</a>
+    <button type="submit" class="btn btn-primary px-5">
+      <i class="fas fa-save me-2"></i>Save Project
+    </button>
+  </div>
+
+</form>
+
+<script>
+  // ── Show / hide Live-only fields ──────────────────────────────────────
+  function toggleLiveFields(type) {
+    document.getElementById('clientOrgBlock').style.display =
+      type === 'LIVE' ? '' : 'none';
+  }
+  // Run on page load in case editing a LIVE project
+  (function () {
+    const sel = document.getElementById('projectType');
+    if (sel) toggleLiveFields(sel.value);
+  })();
+
+  // ── Auto-calculate duration from dates ────────────────────────────────
+  function calcDuration() {
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    const display = document.getElementById('durationDisplay');
+    if (!s || !e) return;
+    const start = new Date(s), end = new Date(e);
+    if (end < start) { display.value = 'End date before start date'; return; }
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days  = end.getDate()  - start.getDate();
+    if (days   < 0) { months--; days  += new Date(end.getFullYear(), end.getMonth(), 0).getDate(); }
+    if (months < 0) { years--;  months += 12; }
+    const parts = [];
+    if (years  > 0) parts.push(years  + ' year'  + (years  > 1 ? 's' : ''));
+    if (months > 0) parts.push(months + ' month' + (months > 1 ? 's' : ''));
+    if (days   > 0) parts.push(days   + ' day'   + (days   > 1 ? 's' : ''));
+    display.value = parts.length ? parts.join(' ') : 'Less than a day';
+  }
+  document.getElementById('startDate').addEventListener('change', calcDuration);
+  document.getElementById('endDate').addEventListener('change',   calcDuration);
+
+  // ── Validate on submit ────────────────────────────────────────────────
+  document.getElementById('projectForm').addEventListener('submit', function (e) {
+    const type = document.getElementById('projectType').value;
+    if (!type) {
+      e.preventDefault();
+      alert('Please select a Project Type (Live or Normal).');
+      return;
+    }
+    const s = document.getElementById('startDate').value;
+    const en = document.getElementById('endDate').value;
+    if (s && en && new Date(en) < new Date(s)) {
+      e.preventDefault();
+      alert('End Date cannot be before Start Date.');
+    }
+  });
+</script>
+{% endblock %}

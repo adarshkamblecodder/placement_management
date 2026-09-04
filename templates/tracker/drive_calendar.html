@@ -1,0 +1,647 @@
+{% extends 'base.html' %}
+{% block title %}Drive Calendar — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+{# ── Header ── #}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+  <div>
+    <h2 class="fw-bold mb-1" style="color:var(--text-main);">
+      <i class="fas fa-calendar-alt text-primary me-2"></i>Placement Drive Calendar
+    </h2>
+    <p class="text-muted small mb-0">All scheduled drives at a glance — click any date to view drive details.</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <span class="badge rounded-pill px-3 py-2" style="background:rgba(14,165,233,.12);color:#0ea5e9;border:1px solid rgba(14,165,233,.3);">
+      <i class="fas fa-clock me-1"></i>{{ upcomingCount }} Upcoming
+    </span>
+    <span class="badge rounded-pill px-3 py-2" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);">
+      <i class="fas fa-circle-dot me-1"></i>{{ ongoingCount }} Ongoing
+    </span>
+    <span class="badge rounded-pill px-3 py-2" style="background:rgba(100,116,139,.12);color:#64748b;border:1px solid rgba(100,116,139,.3);">
+      <i class="fas fa-check me-1"></i>{{ completedCount }} Completed
+    </span>
+    <a href="/companies/" class="btn btn-outline-primary rounded-3 px-3 py-2 d-flex align-items-center gap-2">
+      <i class="fas fa-plus"></i><span>Add Drive</span>
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ══════════════════════════════════════════════════════
+     LEFT: Full Calendar
+  ══════════════════════════════════════════════════════ #}
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background:var(--card-bg);">
+
+      {# ── Month navigation bar ── #}
+      <div class="card-header border-0 p-4 d-flex justify-content-between align-items-center"
+           style="background:var(--card-bg);">
+        <button class="btn btn-light rounded-3 px-3 py-2" id="prevMonthBtn" onclick="changeMonth(-1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="text-center">
+          <h5 class="fw-bold mb-0" id="calendarTitle" style="color:var(--text-main);min-width:200px;"></h5>
+          <span class="text-muted small" id="calendarSubtitle"></span>
+        </div>
+        <button class="btn btn-light rounded-3 px-3 py-2" id="nextMonthBtn" onclick="changeMonth(1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      {# ── Day-of-week header ── #}
+      <div class="px-3 pb-0">
+        <div class="row g-0 mb-1" id="dowHeader">
+          {% for day in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+          <div class="col text-center py-2 text-muted fw-semibold"
+               style="font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;">
+            {{ day }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ── Calendar grid (filled by JS) ── #}
+      <div class="px-3 pb-4" id="calendarGrid"></div>
+
+      {# ── Today / jump bar ── #}
+      <div class="card-footer border-0 p-3 d-flex justify-content-between align-items-center"
+           style="background:var(--card-bg);">
+        <button class="btn btn-sm btn-outline-primary rounded-3 px-3" onclick="jumpToday()">
+          <i class="fas fa-crosshairs me-1"></i>Today
+        </button>
+        <div class="d-flex align-items-center gap-3 small text-muted">
+          <span><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#0ea5e9;"></span>Upcoming</span>
+          <span><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#10b981;"></span>Ongoing</span>
+          <span><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#94a3b8;"></span>Completed</span>
+        </div>
+        <div class="d-flex gap-1">
+          <select id="yearJump" class="form-select form-select-sm border-0 bg-light rounded-3"
+                  style="width:90px;" onchange="jumpYear(this.value)"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════
+     RIGHT: Drive Detail Panel
+  ══════════════════════════════════════════════════════ #}
+  <div class="col-lg-4">
+    {# Sticky mini-today card #}
+    <div class="card border-0 shadow-sm rounded-4 mb-3 p-3" style="background:var(--card-bg);">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-3 d-flex flex-column align-items-center justify-content-center text-white fw-bold shadow-sm"
+             style="min-width:52px;height:52px;background:linear-gradient(135deg,#0ea5e9,#6366f1);font-size:1.3rem;"
+             id="todayBigDate"></div>
+        <div>
+          <div class="fw-bold" style="color:var(--text-main);" id="todayFullDate"></div>
+          <div class="text-muted small" id="todayDriveCount"></div>
+        </div>
+      </div>
+    </div>
+
+    {# Detail panel — shows drives for selected date #}
+    <div class="card border-0 shadow-sm rounded-4" style="background:var(--card-bg); min-height:380px;">
+      <div class="card-header border-0 p-4 pb-2" style="background:var(--card-bg);">
+        <h6 class="fw-bold mb-0" style="color:var(--text-main);" id="detailPanelTitle">
+          <i class="fas fa-info-circle text-primary me-2"></i>Select a date
+        </h6>
+        <p class="text-muted small mb-0 mt-1" id="detailPanelSub">Click any highlighted date on the calendar</p>
+      </div>
+      <div class="card-body p-3 pt-1" id="detailPanelBody">
+        <div class="text-center py-5 text-muted opacity-50">
+          <i class="fas fa-calendar-day fa-3x mb-3 d-block"></i>
+          <p class="small mb-0">No date selected</p>
+        </div>
+      </div>
+    </div>
+
+    {# Upcoming drives list (next 5) #}
+    <div class="card border-0 shadow-sm rounded-4 mt-3" style="background:var(--card-bg);">
+      <div class="card-header border-0 p-4 pb-2" style="background:var(--card-bg);">
+        <h6 class="fw-bold mb-0" style="color:var(--text-main);">
+          <i class="fas fa-rocket text-primary me-2"></i>Upcoming Drives
+        </h6>
+      </div>
+      <div class="card-body p-3 pt-1" id="upcomingList"></div>
+    </div>
+  </div>
+
+</div>{# /row #}
+</div>{# /fade-in #}
+
+<style>
+/* ── Calendar cell base ── */
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1/1;
+  min-height: 64px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 6px 4px 4px;
+  cursor: default;
+  transition: background .15s, transform .12s;
+  user-select: none;
+}
+.cal-cell.has-drive {
+  cursor: pointer;
+}
+.cal-cell.has-drive:hover {
+  background: rgba(14,165,233,.1) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14,165,233,.15);
+}
+.cal-cell.selected {
+  background: rgba(14,165,233,.18) !important;
+  box-shadow: 0 0 0 2px #0ea5e9;
+}
+.cal-cell.today-cell {
+  background: rgba(99,102,241,.08);
+}
+.cal-cell.today-cell .cal-day-num {
+  background: linear-gradient(135deg,#6366f1,#0ea5e9);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.cal-cell.other-month .cal-day-num { color: var(--text-muted); opacity: .35; }
+.cal-day-num {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1;
+  margin-bottom: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Drive dots */
+.drive-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  max-width: 44px;
+}
+.drive-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-upcoming  { background: #0ea5e9; }
+.dot-ongoing   { background: #10b981; }
+.dot-completed { background: #94a3b8; }
+/* Drive label for dates with 1 drive — shows company name inline */
+.cal-label {
+  font-size: .58rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 1px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+.label-upcoming  { background:rgba(14,165,233,.15); color:#0284c7; }
+.label-ongoing   { background:rgba(16,185,129,.15); color:#059669; }
+.label-completed { background:rgba(148,163,184,.15); color:#475569; }
+/* Status badges in detail panel */
+.drive-card {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  transition: box-shadow .2s;
+}
+.drive-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+</style>
+
+<script>
+// ── Data from server ───────────────────────────────────────────────────────
+const BY_DATE   = {{ byDateJson | safe }};
+const INIT_YEAR = {{ year }};
+const INIT_MONTH= {{ month }}; // 1-based
+
+// ── State ──────────────────────────────────────────────────────────────────
+let currentYear  = INIT_YEAR;
+let currentMonth = INIT_MONTH; // 1-based
+let selectedDate = null;
+
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December'
+];
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  populateYearJump();
+  renderCalendar(currentYear, currentMonth);
+  renderTodayCard();
+  renderUpcomingList();
+});
+
+// ── Year jump select ───────────────────────────────────────────────────────
+function populateYearJump() {
+  const sel = document.getElementById('yearJump');
+  const base = INIT_YEAR;
+  for (let y = base - 2; y <= base + 3; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === INIT_YEAR) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+function jumpYear(y) {
+  currentYear  = parseInt(y, 10);
+  currentMonth = 1;
+  selectedDate = null;
+  loadAndRender(currentYear, currentMonth);
+}
+function jumpToday() {
+  const n = new Date();
+  currentYear  = n.getFullYear();
+  currentMonth = n.getMonth() + 1;
+  selectedDate = null;
+  loadAndRender(currentYear, currentMonth);
+}
+
+// ── Month navigation ───────────────────────────────────────────────────────
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  if (currentMonth > 12) { currentMonth = 1;  currentYear++; }
+  renderCalendar(currentYear, currentMonth);
+  // If the year changed we need fresh drive-date data
+}
+
+// ── Load fresh drive-date data then render ─────────────────────────────────
+async function loadAndRender(year, month) {
+  try {
+    const res  = await fetch(`/admin/calendar/drive-dates/?year=${year}`);
+    const data = await res.json();
+    if (data.success) {
+      // Merge new year's data into BY_DATE
+      Object.assign(BY_DATE, data.byDate);
+    }
+  } catch (_) {}
+  renderCalendar(year, month);
+  document.getElementById('yearJump').value = year;
+}
+
+// ── Calendar render ────────────────────────────────────────────────────────
+function renderCalendar(year, month) {
+  const grid = document.getElementById('calendarGrid');
+  const title = document.getElementById('calendarTitle');
+  const sub   = document.getElementById('calendarSubtitle');
+
+  title.textContent = `${MONTH_NAMES[month - 1]} ${year}`;
+
+  // Count drives this month
+  const monthStr = `${year}-${String(month).padStart(2,'0')}`;
+  const driveDays = Object.keys(BY_DATE).filter(k => k.startsWith(monthStr));
+  const driveCount = driveDays.reduce((sum, k) => sum + BY_DATE[k].length, 0);
+  sub.textContent = driveCount > 0 ? `${driveCount} drive(s) this month` : 'No drives this month';
+
+  // First day of month, last day
+  const firstDay  = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const daysInMon = new Date(year, month, 0).getDate();
+  const daysInPrev= new Date(year, month - 1, 0).getDate();
+
+  const today = new Date();
+  const todayStr = isoDate(today);
+
+  // We show 6 rows × 7 cols = 42 cells
+  const totalCells = 42;
+  const cells = [];
+
+  // Previous month tail
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = daysInPrev - i;
+    const d   = new Date(year, month - 2, day);
+    cells.push({ date: d, thisMonth: false });
+  }
+  // Current month
+  for (let d = 1; d <= daysInMon; d++) {
+    cells.push({ date: new Date(year, month - 1, d), thisMonth: true });
+  }
+  // Next month head
+  const remaining = totalCells - cells.length;
+  for (let d = 1; d <= remaining; d++) {
+    cells.push({ date: new Date(year, month, d), thisMonth: false });
+  }
+
+  // Build rows of 7
+  let html = '';
+  for (let row = 0; row < 6; row++) {
+    html += '<div class="row g-1 mb-1">';
+    for (let col = 0; col < 7; col++) {
+      const idx  = row * 7 + col;
+      const cell = cells[idx];
+      const ds   = isoDate(cell.date);
+      const drives = BY_DATE[ds] || [];
+      const isToday  = ds === todayStr;
+      const isSel    = ds === selectedDate;
+      const hasD     = drives.length > 0;
+      const isOther  = !cell.thisMonth;
+
+      let cls = 'cal-cell';
+      if (isToday)   cls += ' today-cell';
+      if (isSel)     cls += ' selected';
+      if (hasD)      cls += ' has-drive';
+      if (isOther)   cls += ' other-month';
+
+      let inner = `<div class="cal-day-num">${cell.date.getDate()}</div>`;
+
+      if (hasD && !isOther) {
+        if (drives.length === 1) {
+          // Single drive: show label
+          const d0 = drives[0];
+          const lbl = d0.companyName || d0.company?.name || 'Drive';
+          const statusCls = `label-${d0.driveStatus || 'upcoming'}`;
+          inner += `<div class="cal-label ${statusCls}">${escHtml(lbl)}</div>`;
+        } else {
+          // Multiple drives: show dots
+          inner += '<div class="drive-dots">';
+          const shown = drives.slice(0, 6);
+          shown.forEach(d => {
+            inner += `<div class="drive-dot dot-${d.driveStatus || 'upcoming'}" title="${escHtml(d.companyName || '')}"></div>`;
+          });
+          if (drives.length > 6) {
+            inner += `<div style="font-size:.55rem;color:var(--text-muted);line-height:1;align-self:center;">+${drives.length - 6}</div>`;
+          }
+          inner += '</div>';
+        }
+      }
+
+      const onclick = hasD && !isOther ? `onclick="selectDate('${ds}')"` : '';
+      html += `<div class="col"><div class="${cls}" ${onclick} id="cell-${ds}">${inner}</div></div>`;
+    }
+    html += '</div>';
+  }
+
+  grid.innerHTML = html;
+}
+
+// ── Select a date ──────────────────────────────────────────────────────────
+async function selectDate(ds) {
+  // Deselect previous
+  if (selectedDate) {
+    const prev = document.getElementById(`cell-${selectedDate}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  selectedDate = ds;
+  const cell = document.getElementById(`cell-${ds}`);
+  if (cell) cell.classList.add('selected');
+
+  // Update panel header
+  const d = new Date(ds + 'T00:00:00');
+  document.getElementById('detailPanelTitle').innerHTML =
+    `<i class="fas fa-calendar-day text-primary me-2"></i>${formatFull(d)}`;
+
+  // Show spinner
+  document.getElementById('detailPanelSub').textContent = '';
+  document.getElementById('detailPanelBody').innerHTML = `
+    <div class="text-center py-4">
+      <span class="spinner-border text-primary" role="status"></span>
+      <p class="text-muted small mt-2 mb-0">Loading drives…</p>
+    </div>`;
+
+  try {
+    const res  = await fetch(`/admin/calendar/drives-on-date/?date=${ds}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed');
+    renderDetailPanel(data.drives, ds);
+  } catch (e) {
+    document.getElementById('detailPanelBody').innerHTML =
+      `<div class="alert alert-danger small">${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderDetailPanel(drives, ds) {
+  const sub  = document.getElementById('detailPanelSub');
+  const body = document.getElementById('detailPanelBody');
+
+  sub.textContent = `${drives.length} drive(s) on this date`;
+
+  if (drives.length === 0) {
+    body.innerHTML = `
+      <div class="text-center py-4 text-muted opacity-60">
+        <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
+        <p class="small mb-0">No drives on this day</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = drives.map(d => {
+    const statusColor = {
+      upcoming:  '#0ea5e9',
+      ongoing:   '#10b981',
+      completed: '#94a3b8',
+    }[d.driveStatus] || '#0ea5e9';
+
+    const statusLabel = (d.driveStatus || 'upcoming').charAt(0).toUpperCase()
+                      + (d.driveStatus || 'upcoming').slice(1);
+
+    const branches = d.eligibleBranches
+      ? d.eligibleBranches.split(',').map(b =>
+          `<span class="badge bg-light text-dark border me-1" style="font-size:.63rem;">${escHtml(b.trim())}</span>`
+        ).join('')
+      : '<span class="text-muted small">All branches</span>';
+
+    // Shortlist button — reuses the exact same Active Shortlisting Mode as
+    // Companies → Placement Drives → Shortlist by navigating to /students/
+    // with the same driveId + branch + skills query params.
+    // Completed drives follow the existing restriction: button is disabled.
+    const isCompleted = d.driveStatus === 'completed';
+    const shortlistBtn = isCompleted
+      ? `<button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 disabled" disabled
+                 aria-disabled="true" title="This action is unavailable for completed drives."
+                 style="font-size:.72rem;">
+           <i class="fas fa-list-check me-1"></i>Shortlist${d.shortlistedCount > 0 ? ' ('+d.shortlistedCount+')' : ''}
+         </button>`
+      : `<button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1"
+                 style="font-size:.72rem;"
+                 title="Shortlist candidates for this drive"
+                 onclick="calendarShortlist(${d.id}, '${escHtml(d.eligibleBranches || '')}', '${escHtml(d.technicalSkills || '')}')">
+           <i class="fas fa-list-check me-1"></i>Shortlist${d.shortlistedCount > 0 ? ' ('+d.shortlistedCount+')' : ''}
+         </button>`;
+    const companyBtn = `
+      <a href="/companies/${d.companyId}/" class="btn btn-sm btn-light rounded-3 px-2 py-1" style="font-size:.72rem;">
+        <i class="fas fa-building me-1"></i>Company
+      </a>`;
+
+    return `
+      <div class="drive-card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-bold mb-0" style="color:var(--text-main);font-size:.95rem;">${escHtml(d.company?.name || 'Unknown')}</div>
+            <div class="text-muted small">${escHtml(d.jobRole)}</div>
+          </div>
+          <span class="badge rounded-pill px-2 py-1 ms-2 flex-shrink-0"
+                style="background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40;font-size:.67rem;">
+            ${statusLabel}
+          </span>
+        </div>
+
+        <div class="row g-2 mb-2 small" style="color:var(--text-main);">
+          <div class="col-6">
+            <i class="fas fa-graduation-cap text-primary me-1"></i>
+            Min CGPA: <strong>${d.minCGPA != null ? d.minCGPA : '—'}</strong>
+          </div>
+          <div class="col-6">
+            <i class="fas fa-door-open text-primary me-1"></i>
+            Openings: <strong>${d.numberOfOpenings || '—'}</strong>
+          </div>
+          ${d.packageLPA ? `
+          <div class="col-6">
+            <i class="fas fa-coins text-success me-1"></i>
+            Package: <strong>${d.packageLPA} LPA</strong>
+          </div>` : ''}
+          ${d.driveLocation ? `
+          <div class="col-12">
+            <i class="fas fa-map-marker-alt text-danger me-1"></i>
+            Location: <strong>${escHtml(d.driveLocation)}</strong>
+          </div>` : ''}
+          ${d.shortlistedCount > 0 ? `
+          <div class="col-6">
+            <i class="fas fa-user-check text-info me-1"></i>
+            Shortlisted: <strong>${d.shortlistedCount}</strong>
+          </div>` : ''}
+        </div>
+
+        <div class="mb-2">${branches}</div>
+
+        <div class="d-flex gap-2 mt-2">
+          ${shortlistBtn}${companyBtn}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Today card ────────────────────────────────────────────────────────────
+function renderTodayCard() {
+  const today = new Date();
+  const ds    = isoDate(today);
+  document.getElementById('todayBigDate').textContent = today.getDate();
+  document.getElementById('todayFullDate').textContent = formatFull(today);
+  const drives = BY_DATE[ds] || [];
+  const todayDriveEl = document.getElementById('todayDriveCount');
+  if (drives.length > 0) {
+    todayDriveEl.innerHTML = `<span class="text-primary fw-semibold">${drives.length} drive(s) today</span>`;
+    // Auto-open today's panel if there are drives
+    selectDate(ds);
+  } else {
+    todayDriveEl.textContent = 'No drives today';
+  }
+}
+
+// ── Upcoming drives list ───────────────────────────────────────────────────
+function renderUpcomingList() {
+  const today = isoDate(new Date());
+  const upcoming = Object.entries(BY_DATE)
+    .filter(([k]) => k >= today)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .slice(0, 6);
+
+  const el = document.getElementById('upcomingList');
+  if (upcoming.length === 0) {
+    el.innerHTML = '<p class="text-muted small text-center py-3 mb-0">No upcoming drives</p>';
+    return;
+  }
+
+  el.innerHTML = upcoming.map(([ds, drives]) => {
+    const d = new Date(ds + 'T00:00:00');
+    const isToday = ds === today;
+    const dateLabel = isToday
+      ? '<span class="badge bg-success text-white">Today</span>'
+      : `<span class="text-muted small">${d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
+
+    return `
+      <div class="d-flex align-items-start gap-3 mb-3 pb-3 border-bottom" style="cursor:pointer;"
+           onclick="selectDate('${ds}'); scrollToDate('${ds}');">
+        <div class="rounded-3 d-flex flex-column align-items-center justify-content-center flex-shrink-0"
+             style="width:40px;height:40px;background:rgba(14,165,233,.12);">
+          <div class="fw-bold text-primary" style="font-size:.9rem;line-height:1;">${d.getDate()}</div>
+          <div class="text-muted" style="font-size:.58rem;">${d.toLocaleString('en',{month:'short'})}</div>
+        </div>
+        <div class="flex-grow-1 min-w-0">
+          <div class="d-flex justify-content-between align-items-center">
+            ${dateLabel}
+            <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary" style="font-size:.63rem;">${drives.length}</span>
+          </div>
+          ${drives.slice(0, 2).map(dr =>
+            `<div class="text-truncate small fw-semibold" style="color:var(--text-main);">
+               ${escHtml(dr.companyName || '—')} <span class="text-muted fw-normal">— ${escHtml(dr.jobRole || '')}</span>
+             </div>`
+          ).join('')}
+          ${drives.length > 2 ? `<div class="text-muted" style="font-size:.68rem;">+${drives.length - 2} more</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Scroll calendar into view for a date ──────────────────────────────────
+function scrollToDate(ds) {
+  const cell = document.getElementById(`cell-${ds}`);
+  if (cell) cell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatFull(d) {
+  return d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Calendar Shortlist ─────────────────────────────────────────────────────
+// Navigates to the existing Active Shortlisting Mode (/students/ with driveId +
+// branch + skills params) — the same URL that Companies → Placement Drives →
+// Shortlist uses via dynamicShortlist(). One source of truth, two entry points.
+function calendarShortlist(driveId, branches, skills) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.innerHTML = `
+    <div class="spinner-border text-primary mb-3" style="width:3.5rem;height:3.5rem;" role="status"></div>
+    <h4 class="text-primary fw-bold">Applying Dynamic Filters…</h4>
+    <p class="text-muted small fw-semibold">Please wait while we match eligible candidates.</p>`;
+  document.body.appendChild(overlay);
+
+  const url = new URL('/students/', window.location.origin);
+  url.searchParams.append('driveId', driveId);
+  if (branches && branches.trim() && branches !== 'null') {
+    branches.split(',').forEach(b => url.searchParams.append('branch', b.trim()));
+  }
+  if (skills && skills.trim() && skills !== 'null') {
+    skills.split(',').forEach(s => url.searchParams.append('skills', s.trim()));
+  }
+
+  setTimeout(() => { window.location.href = url.toString(); }, 150);
+}
+
+// Fix for BFCache: remove loading overlay if user hits Back
+window.addEventListener('pageshow', function (e) {
+  if (e.persisted) {
+    const overlay = document.querySelector('[style*="backdrop-filter"]');
+    if (overlay) overlay.remove();
+  }
+});
+</script>
+{% endblock %}

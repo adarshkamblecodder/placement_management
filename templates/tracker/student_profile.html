@@ -1,0 +1,569 @@
+{% extends 'base.html' %}
+{% block title %}Student Profile - {{ student.name | default('My Profile') }} - {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{# ── Flash messages ── #}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <h3 class="fw-bold mb-1" style="color: var(--text-main);">Welcome, {{ student.name | default('Student') }} 👋</h3>
+        <p class="text-muted mb-0">Track your placements, job applications, interview assessments, and profile credentials.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="/student/interview-rounds/" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-list-ol me-1"></i>View All Interview Rounds
+        </a>
+        <span class="badge {% if is_profile_complete %}bg-success{% else %}bg-warning text-dark{% endif %} p-2 px-3">
+          {% if is_profile_complete %}Profile Complete{% else %}Incomplete Profile ({{ completion }}%){% endif %}
+        </span>
+      </div>
+    </div>
+    <div class="row g-3 mt-2">
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Branch</div>
+        <div class="fw-semibold">{{ student.branch | default('—') }}</div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Year</div>
+        <div class="fw-semibold">Year {{ student.year | default('—') }}</div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Date of Birth</div>
+        <div class="fw-semibold">{{ student.date_of_birth | formatDateDMY | default('—') }}</div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Gender</div>
+        <div class="fw-semibold">
+          {% if student.gender == 'M' or student.gender == 'Male' %}Male
+          {% elif student.gender == 'F' or student.gender == 'Female' %}Female
+          {% elif student.gender == 'O' or student.gender == 'Other' %}Other
+          {% elif student.gender %}{{ student.gender }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Placement</div>
+        <div class="fw-semibold">{{ student.placement_status | default('Not Placed') }}</div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">CGPA</div>
+        <div class="fw-semibold">{{ student.cgpa | floatformat(2) | default('—') }}</div>
+      </div>
+      <div class="col-md-4 col-lg-2">
+        <div class="small text-muted">Profile Completion</div>
+        <div class="fw-semibold">{{ completion }}%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-3">
+    <div class="card stat-card h-100 border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small text-muted fw-semibold">Job Applications</div>
+          <div class="h4 fw-bold mb-0 text-primary">{{ dashboard.counts.applications | default(dashboard.applications.length) }}</div>
+        </div>
+        <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary"><i class="fas fa-file-alt fa-lg"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="card stat-card h-100 border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small text-muted fw-semibold">Upcoming Interviews</div>
+          <div class="h4 fw-bold mb-0 text-warning">{{ dashboard.counts.upcoming }}</div>
+        </div>
+        <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning"><i class="fas fa-calendar-alt fa-lg"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="card stat-card h-100 border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small text-muted fw-semibold">Shortlisted Drives</div>
+          <div class="h4 fw-bold mb-0 text-info">{{ dashboard.counts.drivesShortlisted }}</div>
+        </div>
+        <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info"><i class="fas fa-user-check fa-lg"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="card stat-card h-100 border-0 shadow-sm p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small text-muted fw-semibold">Placement Status</div>
+          <div class="h5 fw-bold mb-0 {% if student.placement_status == 'Placed' %}text-success{% else %}text-secondary{% endif %}">
+            {{ student.placement_status | default('Not Placed') }}
+          </div>
+        </div>
+        <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success"><i class="fas fa-award fa-lg"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {# ── Sidebar: Identity + Resume + Status ── #}
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4 text-center">
+        {% if student.profile_photo %}
+        <img src="{{ student.profile_photo.url if student.profile_photo.url else '/media/' + student.profile_photo }}" class="rounded-circle mx-auto mb-3"
+             style="width:120px; height:120px; object-fit:cover; border:3px solid var(--primary);">
+        {% else %}
+        <div class="rounded-circle mx-auto mb-3 bg-light d-flex align-items-center justify-content-center text-muted border"
+             style="width:120px; height:120px;">
+          <i class="fas fa-user fa-3x"></i>
+        </div>
+        {% endif %}
+        <h4 class="fw-bold mb-1">{{ student.name | default('—') }}</h4>
+        <div class="text-muted small mb-2 font-monospace">{{ student.student_id }}</div>
+        {% if student.branch %}
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-1">{{ student.branch }}</span>
+        {% endif %}
+        {% if student.year %}
+        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">Year {{ student.year }}</span>
+        {% endif %}
+
+        {% if student.skillsDisplay %}
+        <div class="mt-3 pt-3 border-top">
+          <div class="small text-muted mb-2 fw-semibold">Skills</div>
+          <div class="d-flex flex-wrap gap-1 justify-content-center">
+            {% for skill in student.skillsDisplay | split(',') %}
+            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+              <i class="fas fa-code me-1"></i>{{ skill | trim }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if student.certifications %}
+        <div class="mt-3 pt-3 border-top">
+          <div class="small text-muted mb-2 fw-semibold">Certifications</div>
+          <div class="d-flex flex-wrap gap-1 justify-content-center">
+            {% for cert in student.certifications | split(',') %}
+            <a href="/student/profile/" class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 text-decoration-none cert-badge" title="Certification Badge">
+              <i class="fas fa-certificate me-1"></i>{{ cert | trim }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="px-4 pb-4">
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Profile Completion</span>
+          <span class="fw-bold">{{ completion }}%</span>
+        </div>
+        <div class="progress" style="height:8px;">
+          <div class="progress-bar {% if completion >= 90 %}bg-success{% elif completion >= 60 %}bg-info{% elif completion >= 30 %}bg-warning{% else %}bg-danger{% endif %}"
+               role="progressbar" style="width: {{ completion }}%;" aria-valuenow="{{ completion }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Placement Status Card ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-briefcase me-2 text-primary"></i>Placement Record</h6>
+        {% if student.placement_status == 'Placed' %}
+        <div class="alert alert-success py-2 mb-2">
+          <i class="fas fa-trophy me-2"></i><strong>Placed</strong> at {{ student.placement_company }}
+        </div>
+        <div class="small text-muted">
+          {% if student.placement_package %}<div>Package: ₹{{ student.placement_package }} LPA</div>{% endif %}
+          {% if student.placement_year %}<div>Year: {{ student.placement_year }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="text-muted small mb-2">Status: <span class="fw-semibold">{{ student.placement_status | default('Not Placed') }}</span></div>
+        <div class="small">Current Status: <span class="fw-semibold">{{ dashboard.currentRoundLabel }}</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Resume Card ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-file-alt me-2 text-primary"></i>Active Resume</h6>
+        {% if activeResume %}
+        <div class="border rounded p-3 mb-3 bg-light">
+          <div class="fw-semibold text-truncate" title="{{ activeResume.originalFilename }}">
+            <i class="fas fa-file-pdf text-danger me-1"></i>{{ activeResume.originalFilename }}
+          </div>
+          <div class="text-muted small">
+            {{ (activeResume.sizeBytes / 1024) | round(1) }} KB &bull; uploaded {{ activeResume.createdAt }}
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="/student/profile/resume/{{ activeResume.id }}/preview" target="_blank">
+            <i class="fas fa-eye me-1"></i>Preview
+          </a>
+          <a class="btn btn-sm btn-outline-secondary" href="/student/profile/resume/{{ activeResume.id }}/download">
+            <i class="fas fa-download me-1"></i>Download
+          </a>
+          <form method="post" action="/student/profile/resume/{{ activeResume.id }}/delete" onsubmit="return confirm('Delete this resume?');" class="d-inline">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash me-1"></i>Delete</button>
+          </form>
+        </div>
+        {% else %}
+        <div class="text-muted small mb-3">No resume uploaded yet. Upload a PDF resume for auto-skill extraction.</div>
+        {% endif %}
+
+        <form method="post" action="/student/profile/resume/upload" enctype="multipart/form-data" class="mt-3">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <label class="form-label small fw-semibold">{% if activeResume %}Replace Resume{% else %}Upload Resume{% endif %} (PDF/DOC/DOCX, max 5MB)</label>
+          <div class="d-flex gap-2">
+            <input type="file" name="resume" accept=".pdf,.doc,.docx,application/pdf" class="form-control form-control-sm" required>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-upload me-1"></i>Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Main Column: 1. Applications, 2. Upcoming Interviews, 3. Interviews Attended, 4. Edit Profile ── #}
+  <div class="col-lg-8">
+    
+    {# ── SECTION 1: Job Applications ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-slate-800">
+          <i class="fas fa-paper-plane text-primary me-2"></i>1. Job Applications
+        </h6>
+        <span class="badge bg-primary bg-opacity-10 text-primary">{{ dashboard.applications.length }} applied</span>
+      </div>
+      <div class="card-body p-0">
+        {% if dashboard.applications and dashboard.applications.length > 0 %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+              <tr><th>Company</th><th>Job Role</th><th>Applied Date</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {% for app in dashboard.applications %}
+              <tr>
+                <td class="fw-semibold">{{ app.company.name | default('Company') }}</td>
+                <td>{{ app.job.title | default('Position') }}</td>
+                <td class="small text-muted">{{ app.applied_date | formatDateDMY | default(app.applied_date) }}</td>
+                <td>
+                  <span class="badge {% if app.status == 'Selected' %}bg-success{% elif app.status == 'Rejected' %}bg-danger{% else %}bg-info{% endif %}">
+                    {{ app.status | default('Submitted') }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted small">
+          <i class="fas fa-inbox fa-2x mb-2 d-block opacity-40"></i>
+          No job applications submitted yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── SECTION 2: Upcoming Interviews ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-slate-800">
+          <i class="fas fa-calendar-check text-warning me-2"></i>2. Upcoming Interviews
+        </h6>
+        <span class="badge bg-warning bg-opacity-10 text-warning">{{ dashboard.upcoming.length }} scheduled</span>
+      </div>
+      <div class="card-body p-0">
+        {% if dashboard.upcoming and dashboard.upcoming.length > 0 %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+              <tr><th>Company</th><th>Job Role</th><th>Interview Date</th><th>Status / Mode</th></tr>
+            </thead>
+            <tbody>
+              {% for u in dashboard.upcoming %}
+              <tr>
+                <td class="fw-semibold">{{ u.companyName }}</td>
+                <td>{{ u.jobRole }}</td>
+                <td><i class="far fa-calendar-alt text-primary me-1"></i>{{ u.interviewDate | formatDateDMY | default(u.interviewDate) }}</td>
+                <td><span class="badge bg-light text-dark border">{{ u.mode | default('Offline / On-Campus') }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted small">
+          <i class="far fa-calendar-times fa-2x mb-2 d-block opacity-40"></i>
+          No upcoming interviews scheduled at this time.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── SECTION 3: Interviews Attended / History Consolidated ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="fw-bold mb-0 text-slate-800">
+            <i class="fas fa-history text-info me-2"></i>3. Interviews Attended &amp; Evaluation History
+          </h6>
+        </div>
+        <a href="/student/interview-rounds/" class="btn btn-sm btn-outline-info">
+          <i class="fas fa-external-link-alt me-1"></i>Full Timeline View
+        </a>
+      </div>
+      <div class="card-body p-4">
+        {% if dashboard.interviewHistory and dashboard.interviewHistory.length > 0 %}
+          {% for grp in dashboard.interviewHistory %}
+          <div class="mb-4 p-3 bg-light rounded border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-bold text-primary">{{ grp.companyName }} — {{ grp.jobRole }}</div>
+              <div class="small text-muted">{{ grp.interviewDate | formatDateDMY | default(grp.interviewDate) }}</div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered bg-white align-middle mb-0">
+                <thead class="table-light small">
+                  <tr><th>Round</th><th>Date</th><th>Result</th><th>Remarks / Feedback</th></tr>
+                </thead>
+                <tbody>
+                  {% for r in grp.rounds %}
+                  <tr>
+                    <td class="fw-semibold">Round {{ r.order }}: {{ r.roundName }}</td>
+                    <td class="small">{{ r.interviewDate | formatDateDMY | default(r.roundDate | formatDateDMY | default('—')) }}</td>
+                    <td>
+                      {% if r.result == 'Passed' or r.result == 'Qualified' %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Passed</span>
+                      {% elif r.result == 'Rejected' %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Rejected</span>
+                      {% else %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">{{ r.result | default('Pending') }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="small text-muted font-monospace">
+                      {{ r.remarks | default(r.notes | default('—')) }}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="text-center py-3 text-muted small">
+          <i class="fas fa-clock fa-2x mb-2 d-block opacity-40"></i>
+          No past interview rounds recorded yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── SECTION 4: Profile Tracker ── #}
+    <div class="card border-0 shadow-sm mb-4" id="profile-tracker">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="fw-bold mb-0">
+          <i class="fas fa-tasks text-primary me-2"></i>Profile Tracker
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+
+          {# ── Personal Info ── #}
+          {% set personalDone = student.name and student.email and student.phone_number and student.date_of_birth %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-user text-primary me-2"></i>
+              <span class="fw-semibold">Personal Info</span>
+              <div class="text-muted small">Name, email, phone, date of birth</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if personalDone %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ Complete</span>
+              {% else %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">⚠️ Incomplete</span>
+              {% endif %}
+              <a href="/student/my-profile/" class="btn btn-sm btn-outline-secondary py-0 px-2">Update</a>
+            </div>
+          </li>
+
+          {# ── Academic Details ── #}
+          {% set academicDone = profile and profile.tenthPercentage != null and profile.twelfthPercentage != null and student.cgpa != null %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-graduation-cap text-info me-2"></i>
+              <span class="fw-semibold">Academic Details</span>
+              <div class="text-muted small">CGPA, 10th %, 12th %</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if academicDone %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ Complete</span>
+              {% else %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">⚠️ Incomplete</span>
+              {% endif %}
+              <a href="/student/my-profile/" class="btn btn-sm btn-outline-secondary py-0 px-2">Update</a>
+            </div>
+          </li>
+
+          {# ── Skills ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-code text-purple me-2" style="color:#7c3aed;"></i>
+              <span class="fw-semibold">Skills</span>
+              <div class="text-muted small">Technical skills listed on profile</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if student.skills %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ Added</span>
+              {% else %}
+              <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">❌ Missing</span>
+              {% endif %}
+              <a href="/student/my-profile/" class="btn btn-sm btn-outline-secondary py-0 px-2">Update</a>
+            </div>
+          </li>
+
+          {# ── Resume ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-file-alt text-danger me-2"></i>
+              <span class="fw-semibold">Resume</span>
+              <div class="text-muted small">
+                {% if activeResume %}{{ activeResume.originalFilename }}{% else %}No resume uploaded{% endif %}
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if activeResume %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ Uploaded</span>
+              {% else %}
+              <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">❌ Missing</span>
+              {% endif %}
+              <a href="/student/my-profile/#resume-section" class="btn btn-sm btn-outline-secondary py-0 px-2">Upload</a>
+            </div>
+          </li>
+
+          {# ── Internships ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-laptop-code text-info me-2"></i>
+              <span class="fw-semibold">Internships</span>
+              <div class="text-muted small">Internship records with certificates</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if internshipCount and internshipCount > 0 %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ {{ internshipCount }} Added</span>
+              {% else %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">⚠️ None Added</span>
+              {% endif %}
+              <a href="/student/internships/" class="btn btn-sm btn-outline-secondary py-0 px-2">Manage</a>
+            </div>
+          </li>
+
+          {# ── Projects ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-diagram-project text-warning me-2"></i>
+              <span class="fw-semibold">Projects</span>
+              <div class="text-muted small">Live &amp; Academic project records</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if projectCount and projectCount > 0 %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                ✅ {{ projectCount }} (Live: {{ liveProjectCount }} | Academic: {{ normalProjectCount }})
+              </span>
+              {% else %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">⚠️ None Added</span>
+              {% endif %}
+              <a href="/student/projects/" class="btn btn-sm btn-outline-secondary py-0 px-2">Manage</a>
+            </div>
+          </li>
+
+          {# ── Certifications ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-certificate text-warning me-2"></i>
+              <span class="fw-semibold">Certifications</span>
+              <div class="text-muted small">Professional certificates listed</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if student.certifications %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">✅ Added</span>
+              {% else %}
+              <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">⚠️ None Added</span>
+              {% endif %}
+              <a href="/student/my-profile/" class="btn btn-sm btn-outline-secondary py-0 px-2">Update</a>
+            </div>
+          </li>
+
+          {# ── Placement Applications ── #}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+            <div>
+              <i class="fas fa-paper-plane text-primary me-2"></i>
+              <span class="fw-semibold">Placement Applications</span>
+              <div class="text-muted small">Job applications submitted</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              {% if dashboard.counts.applications > 0 %}
+              <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">📊 {{ dashboard.counts.applications }} Applied</span>
+              {% else %}
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">None Yet</span>
+              {% endif %}
+              <a href="#applications-section" class="btn btn-sm btn-outline-secondary py-0 px-2">View</a>
+            </div>
+          </li>
+
+          {# ── Profile Completion ── #}
+          <li class="list-group-item px-4 py-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <i class="fas fa-chart-pie text-success me-2"></i>
+                <span class="fw-semibold">Overall Completion</span>
+              </div>
+              <span class="fw-bold {% if completion >= 90 %}text-success{% elif completion >= 60 %}text-info{% elif completion >= 30 %}text-warning{% else %}text-danger{% endif %}">
+                {{ completion }}%
+              </span>
+            </div>
+            <div class="progress" style="height:8px;">
+              <div class="progress-bar {% if completion >= 90 %}bg-success{% elif completion >= 60 %}bg-info{% elif completion >= 30 %}bg-warning{% else %}bg-danger{% endif %}"
+                   role="progressbar" style="width:{{ completion }}%;"
+                   aria-valuenow="{{ completion }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="mt-2 text-end">
+              <a href="/student/my-profile/" class="btn btn-sm btn-primary">
+                <i class="fas fa-user-edit me-1"></i>Edit My Profile
+              </a>
+            </div>
+          </li>
+
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.cert-badge {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.cert-badge:hover {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

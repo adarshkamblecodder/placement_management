@@ -1,0 +1,34 @@
+{
+  "name": "placement_management",
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "migrate": "node scripts/migrate_to_postgres.js",
+    "seed": "node scripts/seed_demo_data.js",
+    "test": "node scripts/verify_all.js",
+    "test:integration": "node scripts/test_integration.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
+    "express-session": "^1.18.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^8.0.7",
+    "nunjucks": "^3.2.4",
+    "pdf-parse": "1.1.4",
+    "pg": "^8.13.3",
+    "sequelize": "^6.37.8",
+    "xlsx": "^0.18.5"
+  }
+}

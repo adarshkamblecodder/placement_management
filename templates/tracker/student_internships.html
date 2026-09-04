@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}My Internships — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-0" style="color:var(--text-main);">
+      <i class="fas fa-laptop-code text-primary me-2"></i>My Internships
+    </h3>
+    <p class="text-muted small mb-0">Manage and track all your internship experiences.</p>
+  </div>
+  <a href="/student/internships/add/" class="btn btn-primary">
+    <i class="fas fa-plus me-1"></i>Add Internship
+  </a>
+</div>
+
+{% if internships and internships.length %}
+
+{# ── Summary table (compact) ── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-3">#</th>
+          <th>Company / Role</th>
+          <th>Domain</th>
+          <th>Duration</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th>Certificate</th>
+          <th>Verification</th>
+          <th class="text-end pe-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in internships %}
+        <tr>
+          <td class="ps-3 text-muted small">{{ loop.index }}</td>
+          <td>
+            <div class="fw-semibold text-primary">{{ i.companyName }}</div>
+            <div class="text-muted small">{{ i.role }}</div>
+            <span class="badge bg-light text-secondary border" style="font-size:.7rem;">{{ i.internshipType }}</span>
+          </td>
+          <td class="small">{{ i.domain }}</td>
+          <td class="small fw-semibold">{{ i.duration | default('—') }}</td>
+          <td class="small text-muted">
+            {{ i.startDate | formatDateDMY }}<br>
+            <span class="text-muted">→ {{ i.endDate | formatDateDMY }}</span>
+          </td>
+          <td>
+            {% if i.status == 'Completed' %}
+              <span class="badge bg-success">✅ Completed</span>
+            {% elif i.status == 'Ongoing' %}
+              <span class="badge bg-warning text-dark">🔄 Ongoing</span>
+            {% else %}
+              <span class="badge bg-secondary">— Not Done</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if i.certificateFile %}
+              <a href="/student/internships/{{ i.id }}/certificate" target="_blank"
+                 class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 text-decoration-none" style="font-size:.75rem;">
+                <i class="fas fa-file-alt me-1"></i>View
+              </a>
+            {% else %}
+              <a href="/student/internships/{{ i.id }}/edit/"
+                 class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 text-decoration-none" style="font-size:.75rem;"
+                 title="Certificate missing — click to upload">
+                <i class="fas fa-exclamation-triangle me-1"></i>Missing — Upload
+              </a>
+            {% endif %}
+          </td>
+          <td>
+            {% if i.verificationStatus == 'Verified' %}
+              <span class="badge bg-success" style="font-size:.75rem;"><i class="fas fa-check-circle me-1"></i>Verified</span>
+            {% elif i.verificationStatus == 'Rejected' %}
+              <span class="badge bg-danger" style="font-size:.75rem;"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+            {% else %}
+              <span class="badge bg-warning text-dark" style="font-size:.75rem;"><i class="fas fa-clock me-1"></i>Pending</span>
+            {% endif %}
+          </td>
+          <td class="text-end pe-3 text-nowrap">
+            <a href="/student/internships/{{ i.id }}/"
+               class="btn btn-sm btn-outline-info me-1" title="View">
+              <i class="fas fa-eye"></i>
+            </a>
+            {% if i.verificationStatus == 'Verified' %}
+            <span class="btn btn-sm btn-light border text-muted me-1 pe-none" title="Locked — verified by admin">
+              <i class="fas fa-lock"></i>
+            </span>
+            <span class="btn btn-sm btn-light border text-muted pe-none" title="Locked — verified by admin">
+              <i class="fas fa-lock"></i>
+            </span>
+            {% else %}
+            <a href="/student/internships/{{ i.id }}/edit/"
+               class="btn btn-sm btn-outline-secondary me-1" title="Edit">
+              <i class="fas fa-edit"></i>
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                    title="Delete"
+                    onclick="confirmDelete({{ i.id }}, '{{ i.companyName | replace("'","\\'")}}')"
+            ><i class="fas fa-trash"></i></button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card border-0 shadow-sm">
+  <div class="text-center py-5">
+    <i class="fas fa-laptop-code fa-3x text-muted mb-3 d-block opacity-40"></i>
+    <h5 class="text-muted fw-semibold">No internships added yet</h5>
+    <p class="text-muted small">Click <strong>+ Add Internship</strong> to record your first internship experience.</p>
+    <a href="/student/internships/add/" class="btn btn-primary mt-2">
+      <i class="fas fa-plus me-1"></i>Add Internship
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{# ── Delete confirmation modal ── #}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-trash me-2"></i>Delete Internship</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the internship at <strong id="deleteCompanyName"></strong>?</p>
+        <p class="text-muted small mb-0">This action cannot be undone. Any uploaded certificate will also be removed.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="POST">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function confirmDelete(id, company) {
+    document.getElementById('deleteCompanyName').textContent = company;
+    document.getElementById('deleteForm').action = '/student/internships/' + id + '/delete/';
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+  }
+</script>
+{% endblock %}

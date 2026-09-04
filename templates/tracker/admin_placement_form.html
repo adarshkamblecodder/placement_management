@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center mb-4">
+  <a href="/students/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0" style="color:#1e293b;">Update Placement Status</h2>
+</div>
+
+<div class="card p-4 shadow-sm" style="max-width:640px;">
+  <h5 class="mb-1 fw-bold">{{ object.name | default('Unknown') }}</h5>
+  <p class="text-muted small mb-4">Student ID: <code>{{ object.student_id }}</code> &nbsp;|&nbsp; Branch: {{ object.branch | default('—') }}</p>
+
+  <form method="post" action="/students/{{ object.student_id }}/placement/">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+    <div class="row g-3">
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Placement Status <span class="text-danger">*</span></label>
+        <select name="placement_status" class="form-select" required>
+          <option value="Not Placed" {% if form.placement_status == 'Not Placed' %}selected{% endif %}>Not Placed</option>
+          <option value="Placed" {% if form.placement_status == 'Placed' %}selected{% endif %}>Placed</option>
+        </select>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Placement Company</label>
+        <select name="placement_company" id="placementCompanySelect" class="form-select">
+          <option value="">-- Select Company --</option>
+          {% for company in companies %}
+          <option value="{{ company.name }}"
+            {% if form.placement_company == company.name %}selected{% endif %}>
+            {{ company.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <div class="form-text">Required when status is Placed. Only companies from the database are shown.</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Package (LPA)</label>
+        <input type="number" name="placement_package" class="form-control"
+               step="0.01" min="0"
+               placeholder="e.g. 7.50"
+               value="{{ form.placement_package }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Placement Year</label>
+        <input type="text" name="placement_year" class="form-control"
+               placeholder="e.g. 2024"
+               value="{{ form.placement_year }}">
+      </div>
+
+    </div>
+
+    <div class="mt-4 d-flex gap-2 justify-content-end">
+      <a href="/students/" class="btn btn-light border">Cancel</a>
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="fas fa-save me-2"></i>Save Status
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const select = document.getElementById('placementCompanySelect');
+  if (select && typeof Choices !== 'undefined') {
+    new Choices(select, {
+      searchEnabled: true,
+      searchPlaceholderValue: 'Type to search company...',
+      itemSelectText: '',
+      shouldSort: false,
+      allowHTML: false,
+    });
+  }
+});
+</script>
+
+{% endblock %}

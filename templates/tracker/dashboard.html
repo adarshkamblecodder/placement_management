@@ -1,0 +1,481 @@
+{% extends 'base.html' %}
+{% block title %}Placement Analytics &amp; Command Center — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --dash-hero-grad: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 50%, rgba(168, 85, 247, 0.08) 100%);
+    --card-surface: var(--card-bg);
+  }
+
+  .dash-container {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  /* ── Hero Welcome Card ── */
+  .hero-welcome-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f766e 100%);
+    border-radius: 24px;
+    padding: 2.25rem 2.5rem;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .hero-welcome-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .hero-welcome-card::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    left: 20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* ── Luxury Stat Cards ── */
+  .stat-card-luxury {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 1.6rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+
+  .stat-card-luxury:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 35px rgba(14, 165, 233, 0.12);
+    border-color: var(--primary);
+  }
+
+  .stat-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    transition: transform 0.3s ease;
+  }
+
+  .stat-card-luxury:hover .stat-icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  /* ── Interactive Search Box ── */
+  .search-card-luxury {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  }
+
+  .luxury-input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .luxury-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
+    background-color: var(--card-bg);
+  }
+
+  .skill-pill-btn {
+    border-radius: 20px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-main);
+  }
+
+  .skill-pill-btn:hover {
+    background: var(--primary);
+    color: #fff !important;
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+  }
+
+  /* ── Department Card Styling ── */
+  .dept-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1.4rem;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .dept-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .progress-gradient {
+    height: 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+  }
+</style>
+
+<div class="dash-container">
+  {# ── Executive Hero Card ── #}
+  <div class="hero-welcome-card mb-4">
+    <div class="position-relative d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4" style="z-index: 2;">
+      <div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <span class="badge rounded-pill bg-emerald-500 bg-opacity-20 text-emerald-300 border border-emerald-500 border-opacity-30 px-3 py-1 fw-bold small d-inline-flex align-items-center gap-2" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7;">
+            <span class="spinner-grow spinner-grow-sm" style="width: 7px; height: 7px;"></span>
+            Recruitment Season 2025–26 Live
+          </span>
+          <span class="badge rounded-pill bg-white bg-opacity-10 text-white border border-white border-opacity-20 px-3 py-1 small">
+            <i class="fas fa-university me-1 text-sky-400"></i>{{ COLLEGE_NAME }}
+          </span>
+        </div>
+        <h1 class="fw-bold display-6 mb-2" style="letter-spacing: -0.02em;">Campus Placement Executive Command</h1>
+        <p class="text-white text-opacity-75 mb-0" style="max-width: 650px; font-size: 0.95rem; line-height: 1.5;">
+          Automated eligibility verification, multi-tier corporate drives, candidate shortlisting, and live departmental placement metrics.
+        </p>
+      </div>
+
+      {# Fast Action Buttons #}
+      <div class="d-flex flex-wrap gap-2">
+        <a href="/companies/add/" class="btn btn-light fw-bold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" style="color: #0f172a;">
+          <i class="fas fa-plus-circle text-primary"></i>
+          <span>Schedule Drive</span>
+        </a>
+        <a href="/shortlists" class="btn btn-outline-light px-3 py-2 rounded-3 d-flex align-items-center gap-2">
+          <i class="fas fa-list-check"></i>
+          <span>Shortlists</span>
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  {# ── 4 Top-Tier Metric Stat Cards ── #}
+  <div class="row g-3 mb-4">
+    {# Stat 1: Total Students #}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="/students/" class="text-decoration-none">
+        <div class="stat-card-luxury">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">Total Enrolled Pool</span>
+              <h2 class="fw-bold display-6 mb-0 mt-1" style="color: var(--text-main);">{{ total_students }}</h2>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(14, 165, 233, 0.12); color: #0284c7;">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top small" style="color: #0284c7; font-weight: 600;">
+            <span>Candidate Directory</span>
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    {# Stat 2: Partner Companies #}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="/companies/" class="text-decoration-none">
+        <div class="stat-card-luxury">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">Partner Companies</span>
+              <h2 class="fw-bold display-6 mb-0 mt-1 text-success">{{ total_companies }}</h2>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+              <i class="fas fa-building"></i>
+            </div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top small text-success" style="font-weight: 600;">
+            <span>Manage Recruiter CRM</span>
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    {# Stat 3: Placed Students #}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="/placed/" class="text-decoration-none">
+        <div class="stat-card-luxury">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">Offers Accepted</span>
+              <h2 class="fw-bold display-6 mb-0 mt-1 text-warning">{{ placed_students }}</h2>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+              <i class="fas fa-award"></i>
+            </div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top small text-warning" style="font-weight: 600;">
+            <span>Placement Honor Roll</span>
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    {# Stat 4: Placement Conversion Rate #}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="/reports/" class="text-decoration-none">
+        <div class="stat-card-luxury">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">Placement Rate</span>
+              <h2 class="fw-bold display-6 mb-0 mt-1" style="color: #6366f1;">{{ placement_percentage }}%</h2>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;">
+              <i class="fas fa-chart-pie"></i>
+            </div>
+          </div>
+          <div class="d-flex align-items-center justify-content-between pt-2 border-top small" style="color: #6366f1; font-weight: 600;">
+            <span>Analytics &amp; Trends</span>
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  {# ── Instant Candidate & Skills Filter Toolbar ── #}
+  <div class="search-card-luxury mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+      <div>
+        <h5 class="fw-bold mb-1" style="color: var(--text-main);">
+          <i class="fas fa-magnifying-glass text-primary me-2"></i>Candidate &amp; Technical Competency Filter
+        </h5>
+        <p class="text-muted small mb-0">Search graduating candidates by name, student roll number, or technical competencies</p>
+      </div>
+      <span class="badge rounded-pill bg-light text-muted border px-3 py-2 small">
+        <i class="fas fa-filter me-1 text-primary"></i>Live Multi-Field Search
+      </span>
+    </div>
+
+    <form action="/students/" method="GET" class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-0"><i class="fas fa-user text-muted"></i></span>
+          <input type="text" name="q" id="dashQueryInput" class="form-control border-0 bg-light rounded-end-0 py-2" placeholder="Search candidate name, roll number..." value="{{ search_q }}">
+          <button type="button" class="btn btn-light border-0 text-muted" onclick="clearField('dashQueryInput')" title="Clear">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-0"><i class="fas fa-code text-muted"></i></span>
+          <input type="text" name="skills" id="dashSkillsInput" class="form-control border-0 bg-light rounded-end-0 py-2" placeholder="Filter by skill tag (e.g. Python, React, AWS)..." value="{{ search_skills }}">
+          <button type="button" class="btn btn-light border-0 text-muted" onclick="clearField('dashSkillsInput')" title="Clear">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-primary w-100 py-2 rounded-3 shadow-sm fw-semibold">
+          <i class="fas fa-arrow-right me-1"></i>Search
+        </button>
+      </div>
+    </form>
+
+    {# Popular Skills Fast Tags #}
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top">
+      <span class="small text-muted fw-bold"><i class="fas fa-tags text-primary me-1"></i>Instant Skill Tags:</span>
+      {% set quickSkills = ['Python', 'React', 'JavaScript', 'AWS', 'SQL', 'Docker', 'Machine Learning', 'Java', 'Go'] %}
+      {% for s in quickSkills %}
+      <a href="/students/?skills={{ s }}" class="skill-pill-btn">
+        #{{ s }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Department Breakdown ── #}
+  <div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold mb-1" style="color: var(--text-main);">Department Placement Performance</h5>
+        <p class="text-muted small mb-0">Enrolled graduating students vs. confirmed placements across academic branches</p>
+      </div>
+      <a href="/students/" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+        <span>Full Student Pool</span>
+        <i class="fas fa-chevron-right ms-1"></i>
+      </a>
+    </div>
+
+    <div class="row g-3">
+      {# CS #}
+      {% set csEnrolled = deptCounts.CS | default(0) %}
+      {% set csPlaced = deptPlaced.CS | default(0) %}
+      {% set csPct = (csPlaced / csEnrolled * 100) | round if csEnrolled > 0 else 0 %}
+      <div class="col-12 col-sm-6 col-lg-3">
+        <a href="/students/?branch=CS" class="text-decoration-none d-block h-100">
+          <div class="dept-card" style="border-top: 4px solid #38bdf8 !important;">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge rounded-pill bg-sky-100 text-sky-700 border px-2 py-1 small fw-bold" style="background: rgba(56, 189, 248, 0.15); color: #0284c7; border-color: rgba(56, 189, 248, 0.3);">
+                  CS
+                </span>
+                <span class="fw-bold small" style="color: #0284c7;">{{ csPct }}%</span>
+              </div>
+              <h6 class="fw-bold mb-3" style="color: var(--text-main);">Computer Science</h6>
+              <div class="d-flex justify-content-between small text-muted mb-2">
+                <span>Enrolled: <strong>{{ csEnrolled }}</strong></span>
+                <span>Placed: <strong class="text-success">{{ csPlaced }}</strong></span>
+              </div>
+              <div class="progress-gradient mb-1">
+                <div class="progress-bar" style="width: {{ csPct }}%; background: #0284c7; height: 100%;"></div>
+              </div>
+            </div>
+            <div class="pt-3 border-top small d-flex justify-content-between align-items-center mt-3" style="color: #0284c7; font-weight: 600;">
+              <span>View CS Batch</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      {# AIML #}
+      {% set aimlEnrolled = deptCounts.AIML | default(0) %}
+      {% set aimlPlaced = deptPlaced.AIML | default(0) %}
+      {% set aimlPct = (aimlPlaced / aimlEnrolled * 100) | round if aimlEnrolled > 0 else 0 %}
+      <div class="col-12 col-sm-6 col-lg-3">
+        <a href="/students/?branch=AIML" class="text-decoration-none d-block h-100">
+          <div class="dept-card" style="border-top: 4px solid #10b981 !important;">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge rounded-pill bg-emerald-100 text-emerald-700 border px-2 py-1 small fw-bold" style="background: rgba(16, 185, 129, 0.15); color: #059669; border-color: rgba(16, 185, 129, 0.3);">
+                  AIML
+                </span>
+                <span class="fw-bold small text-success">{{ aimlPct }}%</span>
+              </div>
+              <h6 class="fw-bold mb-3" style="color: var(--text-main);">AI &amp; Machine Learning</h6>
+              <div class="d-flex justify-content-between small text-muted mb-2">
+                <span>Enrolled: <strong>{{ aimlEnrolled }}</strong></span>
+                <span>Placed: <strong class="text-success">{{ aimlPlaced }}</strong></span>
+              </div>
+              <div class="progress-gradient mb-1">
+                <div class="progress-bar" style="width: {{ aimlPct }}%; background: #10b981; height: 100%;"></div>
+              </div>
+            </div>
+            <div class="pt-3 border-top small text-success d-flex justify-content-between align-items-center mt-3" style="font-weight: 600;">
+              <span>View AIML Batch</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      {# AIDS #}
+      {% set aidsEnrolled = deptCounts.AIDS | default(0) %}
+      {% set aidsPlaced = deptPlaced.AIDS | default(0) %}
+      {% set aidsPct = (aidsPlaced / aidsEnrolled * 100) | round if aidsEnrolled > 0 else 0 %}
+      <div class="col-12 col-sm-6 col-lg-3">
+        <a href="/students/?branch=AIDS" class="text-decoration-none d-block h-100">
+          <div class="dept-card" style="border-top: 4px solid #f59e0b !important;">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge rounded-pill bg-amber-100 text-amber-700 border px-2 py-1 small fw-bold" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.3);">
+                  AIDS
+                </span>
+                <span class="fw-bold small text-warning">{{ aidsPct }}%</span>
+              </div>
+              <h6 class="fw-bold mb-3" style="color: var(--text-main);">AI &amp; Data Science</h6>
+              <div class="d-flex justify-content-between small text-muted mb-2">
+                <span>Enrolled: <strong>{{ aidsEnrolled }}</strong></span>
+                <span>Placed: <strong class="text-success">{{ aidsPlaced }}</strong></span>
+              </div>
+              <div class="progress-gradient mb-1">
+                <div class="progress-bar" style="width: {{ aidsPct }}%; background: #f59e0b; height: 100%;"></div>
+              </div>
+            </div>
+            <div class="pt-3 border-top small text-warning d-flex justify-content-between align-items-center mt-3" style="font-weight: 600;">
+              <span>View AIDS Batch</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      {# MBA #}
+      {% set mbaEnrolled = deptCounts.MBA | default(0) %}
+      {% set mbaPlaced = deptPlaced.MBA | default(0) %}
+      {% set mbaPct = (mbaPlaced / mbaEnrolled * 100) | round if mbaEnrolled > 0 else 0 %}
+      <div class="col-12 col-sm-6 col-lg-3">
+        <a href="/students/?branch=MBA" class="text-decoration-none d-block h-100">
+          <div class="dept-card" style="border-top: 4px solid #8b5cf6 !important;">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge rounded-pill border px-2 py-1 small fw-bold" style="background: rgba(139, 92, 246, 0.15); color: #7c3aed; border-color: rgba(139, 92, 246, 0.3);">
+                  MBA
+                </span>
+                <span class="fw-bold small" style="color: #7c3aed;">{{ mbaPct }}%</span>
+              </div>
+              <h6 class="fw-bold mb-3" style="color: var(--text-main);">Management (MBA)</h6>
+              <div class="d-flex justify-content-between small text-muted mb-2">
+                <span>Enrolled: <strong>{{ mbaEnrolled }}</strong></span>
+                <span>Placed: <strong class="text-success">{{ mbaPlaced }}</strong></span>
+              </div>
+              <div class="progress-gradient mb-1">
+                <div class="progress-bar" style="width: {{ mbaPct }}%; background: #8b5cf6; height: 100%;"></div>
+              </div>
+            </div>
+            <div class="pt-3 border-top small d-flex justify-content-between align-items-center mt-3" style="color: #7c3aed; font-weight: 600;">
+              <span>View MBA Batch</span>
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function clearField(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.value = '';
+    el.focus();
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{# ── Flash messages ── #}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center mb-4">
+  <a href="/shortlists/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0" style="color:#1e293b;">Edit Shortlist</h2>
+</div>
+
+<div class="card shadow-sm border-0" style="max-width: 600px;">
+  <div class="card-body p-4">
+    <form action="/shortlists/{{ shortlist.id }}/edit" method="POST">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Shortlist Title</label>
+        <input type="text" name="name" class="form-control form-control-lg" value="{{ shortlist.name }}" required>
+        <div class="form-text mt-2">
+          This shortlist is for <strong>{{ shortlist.drive.company.name }}</strong> — {{ shortlist.drive.jobRole }}.
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <a href="/shortlists/" class="btn btn-light">Cancel</a>
+        <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

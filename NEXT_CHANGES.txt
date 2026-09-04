@@ -1,0 +1,476 @@
+================================================================================
+  PLACEMENT MANAGEMENT — NEXT CHANGES REQUIRED
+  Written from the perspective of a TPO (Training & Placement Officer)
+  who shortlists students, conducts drives, manages rounds, and records offers.
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE CORE PROBLEM — How a real drive actually works vs what the system does
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REAL WORLD (how a TPO runs a campus drive):
+  - A company says: "We have 5 openings."
+  - I (TPO) look at eligible students and shortlist 20-30 of them to APPEAR
+    for the interview. All 20-30 students sit in Round 1 (aptitude test).
+  - After Round 1: maybe 15 qualify → they go to Round 2 (technical).
+  - After Round 2: maybe 8 qualify → they go to Round 3 (HR).
+  - After Round 3: company picks the best 5 → those 5 get the offer.
+  - The "5 openings" is the FINAL SELECTION CAP, not the shortlist cap.
+
+WHAT THE SYSTEM DOES TODAY:
+  - It BLOCKS the TPO from shortlisting more than numberOfOpenings students.
+  - So if there are 5 openings, only 5 students can be shortlisted.
+  - This means only 5 students appear for Round 1.
+  - If 2 of them fail Round 1, you're left with 3 students for the company.
+  - The company gets 3 hires instead of 5 — just because the system was wrong.
+
+  This is the biggest functional bug in the entire product.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 1 — CRITICAL: Remove the openings cap from shortlisting
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  In shortlists.routes.js (POST /shortlists/save):
+    if (studentIds.length > openings) → BLOCKS the shortlist creation
+
+  In student_list.html:
+    - The "Select All" button respects the openings limit
+    - Checking more than `openings` students shows an error
+    - The openings badge says "X / limit selected"
+  
+  All of this treats numberOfOpenings as a SHORTLIST cap. It should be
+  treated as a FINAL OFFER cap.
+
+WHAT TO CHANGE:
+
+  1. shortlists.routes.js
+     REMOVE this block entirely:
+       const openings = Number(drive.numberOfOpenings);
+       if (Number.isFinite(openings) && openings > 0 && studentIds.length > openings) {
+         return res.status(400).json({ success: false, error: "..." });
+       }
+     Replace with a WARNING in the response (not a block):
+       if (studentIds.length > openings) {
+         // just log it — don't block
+       }
+
+  2. student_list.html
+     - Remove the selection limit logic entirely from JS.
+       The openings badge should show as INFO only: "X openings available"
+       not as a hard cap that prevents selection.
+     - "Select All" should select ALL visible students, not limited to openings.
+     - The warning "This drive has only X openings, extra selections removed"
+       should be REMOVED completely.
+     - The Shortlist button should only be disabled when 0 students are selected,
+       not when count > openings.
+
+  3. The openings number should only be used at the END:
+     When syncStudentStatus() marks a student as Placed, check:
+       "How many students from this drive are already Placed?"
+       If count >= numberOfOpenings → show a warning to TPO that the drive
+       is now FULL (all openings filled). Don't block — just inform.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 2 — HIGH: ShortlistStudent needs a per-student status field
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  The ShortlistStudent table only has: id, shortlistId, studentId, createdAt.
+  There is no status on the shortlist entry itself.
+  
+  As a TPO, in the shortlist I need to see at a glance:
+    - Which students are still in the running (Active)
+    - Which were rejected at a round (Rejected)
+    - Which received the final offer (Selected / Offered)
+    - Which declined the offer (Offer Declined)
+    - Which did not appear (Absent)
+
+  Right now, the student's global placement_status is the only indicator,
+  but that mixes up ALL their drives. If a student is in 3 shortlists
+  (TCS, Infosys, Wipro) and gets rejected in TCS Round 1, their status
+  becomes "Rejected in Interview" globally — which is wrong. They can still
+  appear in Infosys and Wipro drives.
+
+WHAT TO CHANGE:
+
+  1. Add a `status` field to the ShortlistStudent model:
+       status: ENUM(
+         "Shortlisted",      — appeared/active in this drive
+         "Absent",           — did not appear for the interview
+         "Rejected",         — eliminated during rounds
+         "Selected",         — passed all rounds, got the offer
+         "Offer Declined",   — got offer but rejected it
+         "Withdrawn"         — removed by TPO
+       )
+       Default: "Shortlisted"
+
+  2. When syncStudentStatus() marks a student as "Rejected in Interview"
+     for a round:
+     → Update ShortlistStudent.status = "Rejected" for that specific
+       shortlistId + studentId combination
+     → Do NOT change global placement_status to "Rejected in Interview"
+       (unless student is rejected in ALL active shortlists)
+
+  3. When student passes all rounds:
+     → Update ShortlistStudent.status = "Selected"
+     → Update Student.placement_status = "Placed" (this part is correct)
+
+  4. In the shortlist page table, show a status badge per student row
+     so the TPO can see per-drive status at a glance.
+
+  5. Add a button on shortlist page: "Mark as Absent" for students who
+     did not show up for the interview.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 3 — HIGH: Drive lifecycle / status is not being used properly
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  PlacementDrive has driveStatus: ENUM("upcoming", "ongoing", "completed")
+  and lifecycleStage: STRING.
+  But these are never automatically updated. A drive that happened 3 months
+  ago still shows as "upcoming" because nothing changed it.
+
+  As a TPO, I need to know which drives are active right now vs done.
+
+WHAT TO CHANGE:
+
+  1. Auto-update driveStatus based on interviewDate when the drive is loaded:
+     - If interviewDate > today → "upcoming"
+     - If interviewDate == today → "ongoing"
+     - If interviewDate < today → "completed"
+     (Can be done in the GET route or as a pre-read hook)
+
+  2. On the companies page where drives are listed, show the driveStatus badge
+     with color:
+     - Upcoming → blue
+     - Ongoing → green (pulsing dot)
+     - Completed → grey
+
+  3. Add a filter on /shortlists to show only "ongoing" or "upcoming" drives
+     by default, with option to see completed ones.
+
+  4. When a drive is "completed", the TPO should see a summary:
+     - Total shortlisted: N
+     - Appeared: N
+     - Selected (got offer): N  ← ShortlistStudent.status = "Selected"
+     - Rejected: N
+     - Openings filled: X / Y
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 4 — HIGH: Student global placement_status is overloaded and wrong
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  A student's placement_status on the Student model is currently used to
+  track per-drive interview progress:
+    "Shortlisted", "First Round Qualified", "Rejected in Interview" etc.
+
+  This is wrong. A student can be in multiple drives simultaneously:
+    - Shortlisted at TCS → "Shortlisted" overwrites previous status
+    - Rejects Round 1 at TCS → "Rejected in Interview"
+    - But they are still active at Infosys → status is now misleading
+
+  The global placement_status should only reflect the student's overall
+  placement outcome, not per-drive progress.
+
+WHAT TO CHANGE:
+
+  Student.placement_status should only have these values:
+    "Not Placed"    — default, no offer accepted yet
+    "Placed"        — has accepted an offer (final state)
+
+  Per-drive status (Shortlisted, Rejected, Round Qualified, etc.) should
+  live ONLY on ShortlistStudent.status (see Change 2).
+
+  The student list filter "Active Unplaced" = placement_status = "Not Placed"
+  The placed list = placement_status = "Placed"
+  Everything else goes on the shortlist view, not on the student card.
+
+  syncStudentStatus() should be simplified:
+    - Only set "Placed" when all rounds are qualified
+    - Otherwise, update ShortlistStudent.status for that drive
+    - Never set intermediate statuses on the global Student record
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 5 — MEDIUM: Multiple shortlists per drive causes confusion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  A single PlacementDrive can have MULTIPLE Shortlists (the model allows it).
+  If I create "TCS Drive" and shortlist 10 students, then create another
+  shortlist for the same TCS Drive with 5 more students — there are now 2
+  shortlists, both linked to the same drive and the same set of rounds.
+
+  When I open the round results modal, it shows all rounds for the drive.
+  But which shortlist's students are we tracking? Both? It's unclear.
+
+  As a TPO, I typically have ONE shortlist per drive (the list of students
+  who will appear for that company's interview).
+
+WHAT TO CHANGE:
+
+  Option A (simpler): Enforce one shortlist per drive.
+    - When creating a shortlist, check if one already exists for that drive.
+    - If yes, ask: "A shortlist already exists for this drive.
+      Do you want to add these students to the existing shortlist, or
+      create a new shortlist?"
+    - This prevents accidental duplicates.
+
+  Option B (current model, just show it better): 
+    - In the shortlists page, group by Company/Drive, not by individual shortlist.
+    - Show all students across all shortlists of the same drive together.
+    - This is a UI change, not a data change.
+
+  Recommendation: Go with Option A. Simpler for a TPO.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 6 — MEDIUM: No way to add a student to a shortlist AFTER it is created
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  After creating a shortlist, a student can be REMOVED (there is a Remove button).
+  But there is NO way to ADD a student to an existing shortlist.
+
+  Real scenario: Company calls and says "can you add one more student to the
+  interview tomorrow?" — I can't do that from the shortlist page. I would have
+  to go back to the student list and create an entirely new shortlist.
+
+WHAT TO CHANGE:
+  In the shortlist accordion (shortlists/index.html):
+    - Add an "Add Student" button inside each expanded shortlist panel.
+    - Clicking it opens a modal with a searchable student dropdown.
+    - Selecting a student + clicking Add → POST to a new endpoint:
+        POST /shortlists/:shortlistId/add-student
+      which creates a new ShortlistStudent record (checking for duplicates).
+    - Student gets the shortlist notification email automatically.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 7 — MEDIUM: Rounds modal — no visual of how many are still in the running
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  When I open the shortlist, I see a list of students. But I have no quick
+  summary of:
+    - How many students have been processed vs pending
+    - How many are still active (not yet rejected)
+    - How many have passed each round
+
+  As a TPO running a drive with 20 students across 3 rounds, I need a
+  dashboard-style summary at the top of the shortlist.
+
+WHAT TO CHANGE:
+  Add a summary bar at the top of each expanded shortlist:
+
+    [ Shortlisted: 20 ]  [ Round 1 Passed: 14 ]  [ Round 2 Passed: 8 ]
+    [ Selected: 5 ]  [ Rejected: 9 ]  [ Pending: 6 ]
+
+  This requires reading ShortlistStudent statuses and StudentRoundResult
+  counts for the drive. Compute these server-side in the GET /shortlists
+  handler and pass them to the template.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 8 — MEDIUM: No way to mark a student as "Offer Declined"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  In real placement, sometimes a student passes all rounds, gets the offer,
+  but then DECLINES it (chose another company or higher package elsewhere).
+  
+  Right now when all rounds are passed, the student is immediately marked
+  as "Placed". There is no way to record "Offer Declined" without manually
+  going to the student profile and editing their status back.
+
+  Also, if a student declines, the opening becomes available again and
+  another student should potentially get the offer.
+
+WHAT TO CHANGE:
+  1. When all rounds are qualified, instead of immediately marking as Placed,
+     show the TPO a button: "Issue Offer" on the shortlist student row.
+     
+     Or add a status after all rounds pass:
+       ShortlistStudent.status = "Selected" (not Placed yet)
+     
+     Then the TPO can click "Confirm Offer" → marks as Placed
+     Or click "Decline Offer" → marks as Offer Declined, frees up an opening.
+
+  2. Add "Offer Declined" as a ShortlistStudent status option.
+  
+  3. If offer is declined, the drive's filled openings count goes down by 1.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 9 — MEDIUM: Student list shows "Active Unplaced" filter wrong
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  The student list currently HIDES all students with placement_status = "Placed".
+  So once a student is placed, they disappear from the candidate list.
+
+  As a TPO, sometimes I need to find a placed student to check their profile
+  or correct something. The student list should let me toggle between:
+    - "Unplaced only" (default view)
+    - "All students" (includes placed)
+    - "Placed only" (quick link to /placed/)
+
+WHAT TO CHANGE:
+  In students.routes.js (GET /students/):
+    The WHERE clause is hardcoded:
+      { placement_status: { [Op.ne]: "Placed" } }
+    
+    Change this to be conditional:
+      - Default: show only unplaced (current behaviour, keeps it fast)
+      - Add a query param ?showAll=1 that removes the placement_status filter
+      - Add a toggle button in the student list header: "Show All / Unplaced Only"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 10 — LOW: Shortlist page — student CGPA eligibility not visually checked
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  Each drive has a minCGPA. When I add students to a shortlist, the system
+  does NOT warn me if a student I am shortlisting is below the drive's minCGPA.
+
+  I could accidentally shortlist a student with 6.2 CGPA for a drive that
+  requires 7.0 CGPA. The company will reject them immediately and it
+  reflects poorly on the TPO.
+
+WHAT TO CHANGE:
+  1. In POST /shortlists/save — add server-side eligibility check:
+       For each studentId, fetch their cgpa.
+       If cgpa < drive.minCGPA → add them to a "warnings" array
+       Don't block the shortlist — just return warnings in the response.
+       e.g. { success: true, warnings: ["Student 2024CS005 CGPA 6.2 < required 7.0"] }
+
+  2. In student_list.html — when a drive is selected in the "Shortlist Target"
+     dropdown, visually highlight students who don't meet the CGPA criteria
+     (e.g., dim their row or show a red badge on their CGPA).
+
+  3. Students who don't meet eligibility should ideally not even appear in
+     the filtered list when a drive is selected. Consider adding the drive's
+     minCGPA as a filter when driveId is in the URL (?driveId=X).
+     The eligibility.service.js already has this logic — wire it in.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHANGE 11 — LOW: No confirmation before all rounds are "complete" for a student
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM:
+  When a TPO saves the last round result as "Passed", the system immediately
+  marks the student as "Placed" with the company and package. There is no
+  confirmation step. If I accidentally click "Passed" on the wrong round
+  for the wrong student, they are placed at a company with no easy undo.
+
+WHAT TO CHANGE:
+  When syncStudentStatus() detects all rounds are qualified:
+    Instead of immediately writing "Placed", return a flag:
+      { studentStatus: "All Rounds Qualified - Pending Offer" }
+    The frontend sees this and shows a confirmation dialog:
+      "All rounds passed for [Student Name]. Confirm placement at [Company]
+       for [X LPA]? [Yes, Mark as Placed] [No, Keep as Qualified]"
+    Only on "Yes" does a second API call confirm the placement.
+  
+  This gives the TPO a chance to catch accidental clicks.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPLEMENTATION ORDER (what to build first)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Priority 1 — Core correctness (the system is wrong without these):
+    CHANGE 1  Remove openings cap from shortlisting
+    CHANGE 2  Add status field to ShortlistStudent
+    CHANGE 4  Simplify global placement_status (only "Not Placed" / "Placed")
+
+  Priority 2 — TPO usability (daily workflow improvements):
+    CHANGE 3  Auto-update drive lifecycle status
+    CHANGE 6  Add student to existing shortlist
+    CHANGE 7  Drive summary bar (shortlisted / passed / rejected counts)
+    CHANGE 8  Offer Declined flow
+
+  Priority 3 — Polish & safety:
+    CHANGE 5  One shortlist per drive enforcement
+    CHANGE 9  Show All / Unplaced toggle on student list
+    CHANGE 10 CGPA eligibility warnings when shortlisting
+    CHANGE 11 Confirmation before marking as Placed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILES THAT NEED TO CHANGE (per change)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  CHANGE 1:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+    templates/tracker/student_list.html
+
+  CHANGE 2:
+    src/db/models/shortlist_student.js          (add status field)
+    src/db/models/index.js                      (no change needed)
+    src/modules/admin/interviewRounds/routes/interviewRounds.routes.js
+                                                (update ShortlistStudent status in syncStudentStatus)
+    templates/tracker/shortlists/index.html    (show status badge per student)
+
+  CHANGE 3:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (compute driveStatus before render)
+    templates/tracker/shortlists/index.html    (show status badge on drive header)
+    src/modules/admin/companies/routes/companies.routes.js
+                                                (show driveStatus on company detail)
+
+  CHANGE 4:
+    src/modules/admin/interviewRounds/routes/interviewRounds.routes.js
+                                                (simplify syncStudentStatus)
+    — All places that set intermediate statuses on Student model
+
+  CHANGE 5:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (check for existing shortlist on same drive)
+    templates/tracker/student_list.html        (show warning in confirm modal)
+
+  CHANGE 6:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (add POST /shortlists/:id/add-student)
+    templates/tracker/shortlists/index.html   (add student modal + button)
+
+  CHANGE 7:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (compute round stats per shortlist)
+    templates/tracker/shortlists/index.html   (summary bar in accordion header)
+
+  CHANGE 8:
+    src/db/models/shortlist_student.js         (add "Offer Declined" to status enum)
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (add decline endpoint)
+    src/modules/admin/interviewRounds/routes/interviewRounds.routes.js
+                                                (change "Placed" to "Selected" on all rounds pass)
+    templates/tracker/shortlists/index.html   (Confirm Offer / Decline buttons)
+
+  CHANGE 9:
+    src/modules/admin/students/routes/students.routes.js
+                                                (make placement_status filter conditional)
+    templates/tracker/student_list.html        (toggle button)
+
+  CHANGE 10:
+    src/modules/admin/shortlists/routes/shortlists.routes.js
+                                                (eligibility warnings in POST /shortlists/save)
+    templates/tracker/student_list.html        (highlight ineligible students)
+
+  CHANGE 11:
+    src/modules/admin/interviewRounds/routes/interviewRounds.routes.js
+                                                (return "pending confirmation" status instead of placing)
+    templates/tracker/shortlists/index.html   (confirmation dialog in saveAllRounds JS)
+
+================================================================================
+END OF NEXT_CHANGES.txt
+================================================================================

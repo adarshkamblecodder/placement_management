@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Student Activity Feed — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+  {# ── Header ── #}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-0" style="color: var(--text-main);">
+        <i class="fas fa-bell text-primary me-2"></i>Student Activity Feed
+      </h2>
+      <p class="text-muted small mb-0">Live log of what students have added or updated in their profiles.</p>
+    </div>
+  </div>
+
+  {# ── Flash messages ── #}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.type }} alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+    {{ msg.text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  {# ── KPI Cards ── #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card p-3 border-0 shadow-sm rounded-4" style="background:var(--card-bg)">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="small text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Total Students</div>
+            <div class="h3 fw-bold mb-0" style="color:var(--text-main)">{{ totalCount }}</div>
+          </div>
+          <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary"><i class="fas fa-users fa-lg"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 border-0 shadow-sm rounded-4" style="background:var(--card-bg)">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="small text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Placement Ready (≥80%)</div>
+            <div class="h3 fw-bold mb-0 text-success">{{ highCompletionCount }}</div>
+          </div>
+          <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success"><i class="fas fa-check-double fa-lg"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card p-3 border-0 shadow-sm rounded-4" style="background:var(--card-bg)">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="small text-muted fw-semibold text-uppercase" style="font-size:.72rem;letter-spacing:.05em;">Activity Events</div>
+            <div class="h3 fw-bold mb-0 text-primary">{{ totalActivity }}</div>
+          </div>
+          <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary"><i class="fas fa-stream fa-lg"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    {# ══════════════════════════════════════════════════════
+       LEFT: Student Profile Completion Table
+    ══════════════════════════════════════════════════════ #}
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background:var(--card-bg)">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center" style="background:var(--card-bg)!important">
+          <span class="fw-bold small"><i class="fas fa-id-badge text-primary me-2"></i>Profile Completion</span>
+          <span class="text-muted small">{{ students.length }} student(s)</span>
+        </div>
+
+        {# Filter bar #}
+        <div class="px-4 pb-3 border-bottom">
+          <form method="get" class="row g-2 align-items-end">
+            <div class="col-7">
+              <input type="text" name="q" class="form-control form-control-sm rounded-3 bg-light border-0"
+                     placeholder="Search name / ID…" value="{{ query.q | default('') }}">
+            </div>
+            <div class="col-3">
+              <input type="number" name="min_completion" class="form-control form-control-sm rounded-3 bg-light border-0"
+                     placeholder="Min %" min="0" max="100" value="{{ query.min_completion | default('') }}">
+            </div>
+            <div class="col-2">
+              <button type="submit" class="btn btn-primary btn-sm w-100 rounded-3"><i class="fas fa-search"></i></button>
+            </div>
+          </form>
+        </div>
+
+        <div style="max-height: 560px; overflow-y: auto;">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light text-muted text-uppercase sticky-top" style="font-size:.68rem;letter-spacing:.05em;">
+              <tr>
+                <th class="ps-4">Student</th>
+                <th style="min-width:120px;">Completion</th>
+                <th>Missing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in students %}
+              <tr>
+                <td class="ps-4">
+                  <a href="/students/{{ s.student_id }}/profile/" class="fw-semibold text-decoration-none" style="color:var(--text-main)">{{ s.name }}</a>
+                  <div class="text-muted font-monospace" style="font-size:.7rem">{{ s.student_id }}</div>
+                  <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.65rem">{{ s.branch }}</span>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span class="fw-bold {% if s.completion >= 80 %}text-success{% elif s.completion >= 50 %}text-info{% else %}text-warning{% endif %}">
+                      {{ s.completion }}%
+                    </span>
+                  </div>
+                  <div class="progress rounded-pill" style="height:5px;">
+                    <div class="progress-bar {% if s.completion >= 80 %}bg-success{% elif s.completion >= 50 %}bg-info{% else %}bg-warning{% endif %} rounded-pill"
+                         style="width:{{ s.completion }}%;"></div>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex flex-wrap gap-1">
+                    {% for m in s.missingFields %}
+                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style="font-size:.62rem">{{ m }}</span>
+                    {% else %}
+                    <span class="badge bg-success bg-opacity-10 text-success" style="font-size:.62rem"><i class="fas fa-check me-1"></i>All Set</span>
+                    {% endfor %}
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center py-5 text-muted">No students found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       RIGHT: Student Activity Feed
+    ══════════════════════════════════════════════════════ #}
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4" style="background:var(--card-bg)">
+        <div class="card-header border-0 py-3 px-4 d-flex justify-content-between align-items-center" style="background:var(--card-bg)">
+          <span class="fw-bold small"><i class="fas fa-stream text-primary me-2"></i>Recent Student Activity</span>
+          {# Action type filter #}
+          <form method="get" class="d-flex align-items-center gap-2 mb-0">
+            {% if query.q %}<input type="hidden" name="q" value="{{ query.q }}">{% endif %}
+            {% if query.min_completion %}<input type="hidden" name="min_completion" value="{{ query.min_completion }}">{% endif %}
+            <select name="action_filter" class="form-select form-select-sm border-0 bg-light rounded-3" style="min-width:160px;" onchange="this.form.submit()">
+              <option value="">All Activity</option>
+              {% for key, val in actionLabels %}
+              <option value="{{ key }}" {% if action_filter == key %}selected{% endif %}>{{ val.label }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+
+        <div style="max-height: 560px; overflow-y: auto;" class="px-4 pb-4">
+          {% if activityFeed and activityFeed.length > 0 %}
+          <div class="mt-3">
+            {% for event in activityFeed %}
+            <div class="d-flex gap-3 mb-3 pb-3 {% if not loop.last %}border-bottom{% endif %}">
+              {# Icon bubble #}
+              <div class="flex-shrink-0 rounded-circle bg-{{ event.color }} bg-opacity-10 text-{{ event.color }} d-flex align-items-center justify-content-center shadow-sm"
+                   style="width:40px;height:40px;min-width:40px;">
+                <i class="fas {{ event.icon }} small"></i>
+              </div>
+              {# Content #}
+              <div class="flex-grow-1 min-w-0">
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                  <div>
+                    <span class="badge bg-{{ event.color }} bg-opacity-10 text-{{ event.color }} border border-{{ event.color }} border-opacity-25 px-2 py-1 small fw-semibold">
+                      {{ event.label }}
+                    </span>
+                    <a href="/students/{{ event.studentId }}/profile/"
+                       class="ms-2 text-decoration-none fw-semibold small" style="color:var(--text-main)">
+                      {{ event.studentId }}
+                    </a>
+                  </div>
+                  <span class="text-muted small text-nowrap">{{ event.timestamp | formatDateDMY }}</span>
+                </div>
+                {% if event.details %}
+                <p class="mb-0 text-muted small mt-1">{{ event.details }}</p>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          {# Pagination #}
+          {% if totalPages > 1 %}
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <span class="text-muted small">Page {{ currentPage }} of {{ totalPages }}</span>
+            <div class="d-flex gap-2">
+              {% if currentPage > 1 %}
+              <a href="?{% if query.q %}q={{ query.q }}&{% endif %}{% if query.min_completion %}min_completion={{ query.min_completion }}&{% endif %}{% if action_filter %}action_filter={{ action_filter }}&{% endif %}page={{ currentPage - 1 }}"
+                 class="btn btn-sm btn-light rounded-3 px-3">
+                <i class="fas fa-chevron-left me-1"></i>Prev
+              </a>
+              {% endif %}
+              {% if currentPage < totalPages %}
+              <a href="?{% if query.q %}q={{ query.q }}&{% endif %}{% if query.min_completion %}min_completion={{ query.min_completion }}&{% endif %}{% if action_filter %}action_filter={{ action_filter }}&{% endif %}page={{ currentPage + 1 }}"
+                 class="btn btn-sm btn-primary rounded-3 px-3">
+                Next<i class="fas fa-chevron-right ms-1"></i>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% else %}
+          <div class="text-center py-5">
+            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;">
+              <i class="fas fa-bell-slash fa-xl text-muted opacity-50"></i>
+            </div>
+            <h6 class="fw-bold" style="color:var(--text-main)">No activity yet</h6>
+            <p class="text-muted small mb-0">Activity will appear here when students update their profiles, upload resumes, or add projects and internships.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

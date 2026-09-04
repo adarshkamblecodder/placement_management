@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% block title %}Placement Portal — Student &amp; Officer Sign In{% endblock %}
+
+{% block content %}
+<style>
+    .hero-login-wrapper {
+        min-height: 85vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    .hero-login-card {
+        border: 1px solid var(--border-color);
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.12);
+        display: flex;
+        flex-direction: row;
+        max-width: 980px;
+        width: 100%;
+        background: var(--card-bg);
+        backdrop-filter: blur(25px);
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .hero-login-card:hover {
+        box-shadow: 0 35px 80px rgba(14, 165, 233, 0.2);
+    }
+
+    .hero-banner-side {
+        background: linear-gradient(135deg, #0284c7 0%, #4f46e5 50%, #7c3aed 100%);
+        padding: 3.5rem 3rem;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 46%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-banner-side::before {
+        content: '';
+        position: absolute;
+        top: -40%;
+        right: -40%;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .hero-form-side {
+        padding: 3.5rem 3.5rem;
+        width: 54%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .quick-cred-badge {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .quick-cred-badge:hover {
+        background-color: var(--primary) !important;
+        color: #fff !important;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 860px) {
+        .hero-login-card {
+            flex-direction: column;
+        }
+
+        .hero-banner-side {
+            width: 100%;
+            padding: 2.5rem;
+        }
+
+        .hero-form-side {
+            width: 100%;
+            padding: 2.5rem;
+        }
+    }
+</style>
+
+<div class="hero-login-wrapper fade-in">
+    <div class="hero-login-card">
+        {# Left Visual Side #}
+        <div class="hero-banner-side">
+            <div class="position-relative" style="z-index: 2;">
+                <div
+                    class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-4"
+                    style="background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.55); cursor: pointer; user-select: none;"
+                    title="Next-Gen Placement Platform">
+                    <i class="fas fa-shield-halved small" style="color: #ff4d4f;"></i>
+                    <span class="small fw-bold" style="color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.45); letter-spacing: 0.03em;">Next-Gen Placement Platform</span>
+                    <span class="badge rounded-pill ms-1" style="background:#ff4d4f; color:#fff; font-size:0.65rem; padding: 2px 7px;">NEW</span>
+                </div>
+                <h1 class="fw-bold mb-3 display-6" style="letter-spacing: -0.02em;">Empowering Campus Careers</h1>
+                <p class="text-white text-opacity-80 mb-0" style="line-height: 1.6;">
+                    Direct access to visiting corporate recruiters, verified candidate profiles, automated shortlisting,
+                    and live interview schedules.
+                </p>
+            </div>
+
+            <div class="position-relative mt-5 pt-4 border-top border-white border-opacity-20" style="z-index: 2;">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <h4 class="fw-bold mb-0 text-white">500+</h4>
+                        <span class="small text-white text-opacity-75">Partner Companies</span>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="fw-bold mb-0 text-white">₹32 LPA</h4>
+                        <span class="small text-white text-opacity-75">Highest Package</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Right Form Side #}
+        <div class="hero-form-side">
+            <div class="mb-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                        style="width: 40px; height: 40px;">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3 class="fw-bold mb-0" style="color: var(--text-main);">Sign In</h3>
+                </div>
+                <p class="text-muted small mb-0">Enter your university credentials to access your dashboard</p>
+            </div>
+
+            {# Flash Messages #}
+            {% for msg in messages %}
+            <div
+                class="alert alert-{{ msg.type }} alert-dismissible fade show rounded-3 small p-2 px-3 border-0 shadow-sm mb-3">
+                {{ msg.text }}
+                <button type="button" class="btn-close small" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+
+            <form action="/login/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Username / Student Roll No</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0"><i class="fas fa-user text-muted"></i></span>
+                        <input type="text" name="username" id="loginUsername"
+                            class="form-control bg-light border-0 py-2 rounded-end"
+                            placeholder="e.g. admin or 2024CS001" required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-bold text-muted mb-0">Password</label>
+                        <a href="/student/forgot-password/" class="small text-decoration-none text-primary">Forgot?</a>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0"><i class="fas fa-lock text-muted"></i></span>
+                        <input type="password" name="password" id="loginPassword"
+                            class="form-control bg-light border-0 py-2" placeholder="••••••••" required>
+                        <span class="input-group-text bg-light border-0 rounded-end" style="cursor: pointer;"
+                            onclick="togglePasswordVisibility()" title="Toggle Password Visibility">
+                            <i class="fas fa-eye text-muted" id="togglePasswordIcon"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="btn btn-primary w-100 py-2 rounded-3 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2">
+                    <span>Sign In to Dashboard</span>
+                    <i class="fas fa-arrow-right small"></i>
+                </button>
+            </form>
+
+            <!-- Quick Auto-Fill Demo Credentials for evaluators -->
+            <div class="mt-4 pt-3 border-top">
+                <span class="small text-muted fw-bold d-block mb-2"><i
+                        class="fas fa-key text-warning me-1"></i>One-Click Demo Fill:</span>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-light text-dark border px-3 py-2 quick-cred-badge small"
+                        onclick="fillCreds('admin', 'admin123')">
+                        <i class="fas fa-user-shield me-1 text-primary"></i>Admin (TPO)
+                    </span>
+                    <!-- <span class="badge bg-light text-dark border px-3 py-2 quick-cred-badge small" onclick="fillCreds('coordinator_cs', 'coord123')">
+                        <i class="fas fa-id-badge me-1 text-success"></i>CS Coordinator
+                    </span> -->
+                    <span class="badge bg-light text-dark border px-3 py-2 quick-cred-badge small"
+                        onclick="fillCreds('2024CS001', 'student123')">
+                        <i class="fas fa-user-graduate me-1 text-warning"></i>Student
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function fillCreds(u, p) {
+        document.getElementById('loginUsername').value = u;
+        document.getElementById('loginPassword').value = p;
+    }
+
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('loginPassword');
+        const toggleIcon = document.getElementById('togglePasswordIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+</script>
+{% endblock %}

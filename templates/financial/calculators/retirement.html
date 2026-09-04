@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4 fade-in">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+      <i class="fas fa-umbrella-beach fa-2x"></i>
+    </div>
+    <div>
+      <h2 class="fw-bold mb-1" style="color: var(--text-main);">Retirement Corpus Planner</h2>
+      <p class="text-muted small mb-0">Calculate your inflation-adjusted post-retirement expense and required monthly investment</p>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="background: var(--card-bg);">
+        <h5 class="fw-bold mb-4" style="color: var(--text-main);"><i class="fas fa-sliders text-warning me-2"></i>Retirement Parameters</h5>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted mb-1">Current Age</label>
+            <input type="number" id="cAgeInput" class="form-control rounded-3 bg-light border-0" value="30" min="18" max="70">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted mb-1">Retirement Age</label>
+            <input type="number" id="rAgeInput" class="form-control rounded-3 bg-light border-0" value="60" min="40" max="80">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted mb-1">Current Monthly Expenses (₹)</label>
+          <input type="number" id="expInput" class="form-control rounded-3 bg-light border-0" value="50000" step="1000">
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted mb-1">Inflation Rate (% p.a.)</label>
+            <input type="number" id="inflInput" class="form-control rounded-3 bg-light border-0" value="6.0" step="0.5">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-bold text-muted mb-1">Pre-Retirement Return (%)</label>
+            <input type="number" id="retInput" class="form-control rounded-3 bg-light border-0" value="12.0" step="0.5">
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2 pt-3 border-top">
+          <button class="btn btn-outline-primary rounded-3 py-2 d-flex align-items-center justify-content-center gap-2" id="explainRetireBtn">
+            <i class="fas fa-wand-magic-sparkles text-primary"></i>
+            <span>Explain This Result with AI</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 p-4 h-100 d-flex flex-column justify-content-between" style="background: var(--card-bg);">
+        <div>
+          <h5 class="fw-bold mb-4" style="color: var(--text-main);"><i class="fas fa-chart-line text-success me-2"></i>Retirement Goal Outlook</h5>
+
+          <div class="row g-3 mb-4">
+            <div class="col-6">
+              <div class="p-3 rounded-4 bg-light text-center">
+                <span class="small text-muted d-block mb-1">Monthly Exp. at Retirement</span>
+                <h4 class="fw-bold mb-0 text-dark" id="futureExpText">₹2,87,175</h4>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded-4 bg-warning bg-opacity-10 text-center border border-warning border-opacity-25">
+                <span class="small text-warning fw-semibold d-block mb-1">Target Retirement Corpus</span>
+                <h4 class="fw-bold mb-0 text-warning" id="targetCorpusText">₹5.25 Cr</h4>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 rounded-4 bg-success bg-opacity-10 text-center border border-success border-opacity-25">
+                <span class="small text-success fw-semibold d-block mb-1">Required Monthly SIP Starting Today</span>
+                <h3 class="fw-bold mb-0 text-success" id="monthlySIPReqText">₹14,978 / month</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-3 border-0 rounded-4 mt-3" id="aiExplanationBox" style="background: rgba(14, 165, 233, 0.08); display: none;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="fas fa-robot text-primary"></i>
+            <strong class="text-primary small">AI Retirement Analysis</strong>
+          </div>
+          <p class="mb-0 small text-muted" id="aiExplanationText"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function formatINR(val) {
+  return '₹' + Number(val).toLocaleString('en-IN');
+}
+
+async function updateRetirement() {
+  const cAge = Number(document.getElementById('cAgeInput').value) || 30;
+  const rAge = Number(document.getElementById('rAgeInput').value) || 60;
+  const exp = Number(document.getElementById('expInput').value) || 50000;
+  const infl = Number(document.getElementById('inflInput').value) || 6.0;
+  const ret = Number(document.getElementById('retInput').value) || 12.0;
+
+  try {
+    const res = await fetch('/api/calculators/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'retirement',
+        inputs: {
+          currentAge: cAge,
+          retirementAge: rAge,
+          currentMonthlyExpenses: exp,
+          expectedInflation: infl,
+          expectedReturn: ret,
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.result) {
+      document.getElementById('futureExpText').innerText = formatINR(data.result.futureMonthlyExpenses);
+      document.getElementById('targetCorpusText').innerText = '₹' + (data.result.corpusRequired / 10000000).toFixed(2) + ' Cr';
+      document.getElementById('monthlySIPReqText').innerText = formatINR(data.result.monthlySIPRequired) + ' / mo';
+      if (data.explanation) {
+        document.getElementById('aiExplanationText').innerText = data.explanation;
+      }
+    }
+  } catch(e) {}
+}
+
+document.getElementById('cAgeInput').addEventListener('input', updateRetirement);
+document.getElementById('rAgeInput').addEventListener('input', updateRetirement);
+document.getElementById('expInput').addEventListener('input', updateRetirement);
+document.getElementById('inflInput').addEventListener('input', updateRetirement);
+document.getElementById('retInput').addEventListener('input', updateRetirement);
+
+document.getElementById('explainRetireBtn').addEventListener('click', () => {
+  document.getElementById('aiExplanationBox').style.display = 'block';
+  updateRetirement();
+});
+
+document.addEventListener('DOMContentLoaded', updateRetirement);
+</script>
+{% endblock %}

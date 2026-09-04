@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}Internship Detail — {{ internship.companyName }} — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/student/internships/" class="btn btn-light border"><i class="fas fa-arrow-left"></i></a>
+  <div class="flex-grow-1">
+    <h3 class="fw-bold mb-0" style="color:var(--text-main);">
+      {{ internship.companyName }}
+    </h3>
+    <p class="text-muted small mb-0">{{ internship.role }} &nbsp;·&nbsp; {{ internship.domain }}</p>
+  </div>
+  <a href="/student/internships/{{ internship.id }}/edit/" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-edit me-1"></i>Edit
+  </a>
+</div>
+
+{# ── Header meta strip ── #}
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #6366f1 !important;">
+  <div class="card-body p-3">
+    <div class="d-flex flex-wrap gap-4 align-items-end">
+      <div>
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Status</div>
+        {% if internship.status == 'Completed' %}<span class="badge bg-success">✅ Completed</span>
+        {% elif internship.status == 'Ongoing'  %}<span class="badge bg-warning text-dark">🔄 Ongoing</span>
+        {% else %}<span class="badge bg-secondary">— Not Done</span>{% endif %}
+      </div>
+      <div>
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Type</div>
+        <span class="fw-semibold small">{{ internship.internshipType }}</span>
+      </div>
+      <div>
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Work Mode</div>
+        <span class="fw-semibold small">{{ internship.workMode }}</span>
+      </div>
+      <div>
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Period</div>
+        <span class="fw-semibold small">{{ internship.startDate | formatDateDMY }} → {{ internship.endDate | formatDateDMY }}</span>
+      </div>
+      <div>
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Duration</div>
+        <span class="fw-bold text-primary small">{{ internship.duration | default('—') }}</span>
+      </div>
+      <div class="ms-auto">
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.65rem;color:#94a3b8;">Verification</div>
+        {% if internship.verificationStatus == 'Verified' %}
+          <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+        {% elif internship.verificationStatus == 'Rejected' %}
+          <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+        {% else %}
+          <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pending</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+
+    {# ── Section 1: Internship Details ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-briefcase me-2"></i>Internship Details</h6>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">Company</div>
+            <div class="fw-semibold">{{ internship.companyName }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">Role</div>
+            <div class="fw-semibold">{{ internship.role }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">Domain</div>
+            <div class="fw-semibold">{{ internship.domain }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">Start Date</div>
+            <div class="fw-semibold">{{ internship.startDate | formatDateDMY }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">End Date</div>
+            <div class="fw-semibold">{{ internship.endDate | formatDateDMY }}</div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="small text-muted">Duration</div>
+            <div class="fw-bold text-primary">{{ internship.duration | default('—') }}</div>
+          </div>
+        </div>
+        {% if internship.description %}
+        <div class="mt-3 pt-3 border-top">
+          <div class="small text-muted mb-1">Description</div>
+          <p class="mb-0 small" style="white-space:pre-wrap;">{{ internship.description }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Section 2: Work ── #}
+    {% if internship.projectTitle or internship.responsibilities or internship.skillsUsed or internship.outcome %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-tasks me-2"></i>Internship Work</h6>
+      </div>
+      <div class="card-body p-4">
+        {% if internship.projectTitle %}
+        <div class="mb-3">
+          <div class="small text-muted">Project Title</div>
+          <div class="fw-semibold">{{ internship.projectTitle }}</div>
+        </div>
+        {% endif %}
+        {% if internship.skillsUsed %}
+        <div class="mb-3">
+          <div class="small text-muted mb-1">Skills / Technologies Used</div>
+          <div class="d-flex flex-wrap gap-1">
+            {% for skill in internship.skillsUsed | split(',') %}
+            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">{{ skill | trim }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if internship.responsibilities %}
+        <div class="mb-3">
+          <div class="small text-muted mb-1">Key Responsibilities</div>
+          <p class="mb-0 small" style="white-space:pre-wrap;">{{ internship.responsibilities }}</p>
+        </div>
+        {% endif %}
+        {% if internship.outcome %}
+        <div>
+          <div class="small text-muted mb-1">Learning / Outcome</div>
+          <p class="mb-0 small" style="white-space:pre-wrap;">{{ internship.outcome }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+
+    {# ── Certificate card ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-certificate me-2"></i>Certificate</h6>
+      </div>
+      <div class="card-body p-4">
+        {% if internship.certificateFile %}
+        <a href="/student/internships/{{ internship.id }}/certificate" target="_blank"
+           class="btn btn-outline-success w-100 mb-3">
+          <i class="fas fa-file-alt me-1"></i>View Certificate
+        </a>
+        {% else %}
+        <div class="text-center text-muted py-2 small">
+          <i class="fas fa-file-slash fa-2x mb-2 d-block opacity-40"></i>No certificate uploaded.
+        </div>
+        {% endif %}
+        {% if internship.certificateNumber %}
+        <div class="small mb-1"><span class="text-muted">Cert. No:</span> {{ internship.certificateNumber }}</div>
+        {% endif %}
+        {% if internship.certificateIssueDate %}
+        <div class="small"><span class="text-muted">Issue Date:</span> {{ internship.certificateIssueDate | formatDateDMY }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Supervisor card ── #}
+    {% if internship.mentorName or internship.mentorContact %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-user-tie me-2"></i>Supervisor</h6>
+      </div>
+      <div class="card-body p-4">
+        {% if internship.mentorName %}
+        <div class="small mb-1"><span class="text-muted">Name:</span> {{ internship.mentorName }}</div>
+        {% endif %}
+        {% if internship.mentorContact %}
+        <div class="small"><span class="text-muted">Contact:</span> {{ internship.mentorContact }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── PPO / Stipend card ── #}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-money-bill-wave me-2"></i>Employment / PPO</h6>
+      </div>
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between mb-2 small">
+          <span class="text-muted">Stipend Received</span>
+          <span class="fw-semibold">{% if internship.stipendReceived %}Yes{% else %}No{% endif %}</span>
+        </div>
+        {% if internship.stipendReceived and internship.stipendAmount %}
+        <div class="d-flex justify-content-between mb-2 small">
+          <span class="text-muted">Stipend Amount</span>
+          <span class="fw-bold text-success">₹{{ internship.stipendAmount }}/month</span>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between mb-2 small">
+          <span class="text-muted">PPO Offered</span>
+          <span class="fw-semibold">{% if internship.ppoOffered %}Yes{% else %}No{% endif %}</span>
+        </div>
+        {% if internship.ppoOffered and internship.ppoPackage %}
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">PPO Package</span>
+          <span class="fw-bold text-success">₹{{ internship.ppoPackage }} LPA</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Verification remarks (if any) ── #}
+    {% if internship.verificationRemarks %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-comment-dots me-2"></i>Verification Remarks</h6>
+      </div>
+      <div class="card-body p-4">
+        <p class="mb-0 small" style="white-space:pre-wrap;">{{ internship.verificationRemarks }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

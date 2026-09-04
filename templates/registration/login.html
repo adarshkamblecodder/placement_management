@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-5 w-100">
+    <div class="col-md-5">
+        <div class="card shadow-sm p-4">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-graduation-cap fa-3x" style="color:#38bdf8;"></i>
+                    <h3 class="mt-3 fw-bold">{{ COLLEGE_NAME }}</h3>
+                    <p class="text-muted">College Admin Portal</p>
+                </div>
+                <form method="post">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold">{{ field.label }}</label>
+                        {{ field | safe }}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100 py-2 mt-3">Log In</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.querySelectorAll('input').forEach(el => el.classList.add('form-control'));
+</script>
+{% endblock %}

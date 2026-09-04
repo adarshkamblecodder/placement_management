@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+{# ── Header / Breadcrumbs ── #}
+<div class="d-flex align-items-center mb-4">
+    <a href="/companies/{{ job.company_id }}/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+    <div>
+        <h2 class="fw-bold mb-0" style="color:#1e293b;">
+            <i class="fas fa-briefcase text-primary me-2"></i>{{ job.title }}
+        </h2>
+        <div class="text-muted small mt-1">
+            <span class="me-3 fw-bold text-secondary">{{ job.tracker_company.name }}</span>
+            <span class="me-3"><i class="fas fa-rupee-sign me-1"></i> {{ job.package_lpa | default('TBD') }} LPA</span>
+            <span>
+                <i class="far fa-calendar-alt me-1"></i>
+                {% if job.interview_start_date %}{{ job.interview_start_date }}{% else %}Date TBD{% endif %}
+                {% if job.status == 'Upcoming' %}
+                    <span class="badge bg-warning text-dark ms-2">Upcoming</span>
+                {% elif job.status == 'Ongoing' %}
+                    <span class="badge bg-primary ms-2">Ongoing</span>
+                {% elif job.status == 'Completed' %}
+                    <span class="badge bg-success ms-2">Completed</span>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card p-4 shadow-sm border-0 bg-light">
+            <h6 class="fw-bold text-secondary mb-2">Job Description & Eligibility</h6>
+            <p class="mb-0 small text-dark" style="white-space: pre-wrap;">{{ job.description | default('No description provided.') }}</p>
+        </div>
+    </div>
+</div>
+
+{# ── Shortlisted Candidates Section ── #}
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <h4 class="fw-bold mb-0" style="color:#334155;">Candidates ({{ applications.length }})</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCandidatesModal">
+        <i class="fas fa-user-plus me-2"></i>Shortlist Students
+    </button>
+</div>
+
+<div class="card shadow-sm mb-5">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Branch</th>
+                    <th>CGPA</th>
+                    <th>Status</th>
+                    <th>Notes / Rejection Reason</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr>
+                    <td><span class="badge bg-light border text-dark font-monospace">{{ app.student.student_id }}</span></td>
+                    <td class="fw-semibold">{{ app.student.name }}</td>
+                    <td>{{ app.student.branch | default('-') }}</td>
+                    <td>{{ app.student.cgpa | default('-') }}</td>
+                    <td>
+                        {% if app.status == 'Shortlisted' %}
+                            <span class="badge bg-info text-dark">Shortlisted</span>
+                        {% elif app.status == 'Interviewing' %}
+                            <span class="badge bg-warning text-dark">Interviewing</span>
+                        {% elif app.status == 'Selected' %}
+                            <span class="badge bg-success">Selected</span>
+                        {% elif app.status == 'Rejected' %}
+                            <span class="badge bg-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ app.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted text-truncate" style="max-width: 200px;" title="{{ app.notes }}">
+                        {{ app.notes | default('-') }}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#updateStatusModal-{{ app.id }}">
+                            <i class="fas fa-edit"></i> Update
+                        </button>
+                        <form action="/jobs/{{ job.id }}/applications/{{ app.id }}/delete/" method="POST" class="d-inline" onsubmit="return confirm('Remove student from this drive?');">
+                            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i></button>
+                        </form>
+                    </td>
+                </tr>
+
+                {# ── Update Status Modal for this Application ── #}
+                <div class="modal fade" id="updateStatusModal-{{ app.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-light border-bottom-0">
+                                <h5 class="modal-title fw-bold">Update Status: {{ app.student.name }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="/jobs/{{ job.id }}/applications/{{ app.id }}/update/" method="POST">
+                                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Interview Status</label>
+                                        <select name="status" class="form-select">
+                                            <option value="Shortlisted" {% if app.status == 'Shortlisted' %}selected{% endif %}>Shortlisted</option>
+                                            <option value="Interviewing" {% if app.status == 'Interviewing' %}selected{% endif %}>Interviewing (In Progress)</option>
+                                            <option value="Selected" {% if app.status == 'Selected' %}selected{% endif %}>Selected / Placed</option>
+                                            <option value="Rejected" {% if app.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                                        </select>
+                                        <div class="form-text text-success mt-2"><i class="fas fa-info-circle"></i> Marking as "Selected" will automatically place the student in the global records.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Notes / Feedback</label>
+                                        <textarea name="notes" class="form-control" rows="3" placeholder="If rejected, why? Any HR feedback?">{{ app.notes }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light border-top-0">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Status</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <i class="fas fa-users-slash fa-3x text-muted mb-3 opacity-50"></i>
+                        <h5 class="text-muted fw-semibold">No candidates shortlisted yet</h5>
+                        <p class="text-muted small">Click the "Shortlist Students" button above to add students to this drive.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+{# ── Bulk Add Candidates Modal ── #}
+<div class="modal fade" id="addCandidatesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus text-primary me-2"></i>Select Students to Shortlist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/jobs/{{ job.id }}/shortlist/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="modal-body p-0">
+                    <div class="p-3 bg-white border-bottom">
+                        <input type="text" id="studentSearchInput" class="form-control" placeholder="Search by name, ID, or branch...">
+                    </div>
+                    <div class="table-responsive" style="max-height: 50vh;">
+                        <table class="table table-hover align-middle mb-0" id="availableStudentsTable">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                                    </th>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Branch</th>
+                                    <th>Year</th>
+                                    <th>CGPA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in availableStudents %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="student_ids" value="{{ s.student_id }}" class="form-check-input student-checkbox">
+                                    </td>
+                                    <td><span class="badge bg-light border text-dark font-monospace">{{ s.student_id }}</span></td>
+                                    <td class="fw-semibold">{{ s.name }}</td>
+                                    <td>{{ s.branch | default('-') }}</td>
+                                    <td>{{ s.year | default('-') }} Year</td>
+                                    <td class="fw-bold {% if s.cgpa >= 8 %}text-success{% elif s.cgpa >= 6 %}text-warning{% else %}text-danger{% endif %}">{{ s.cgpa | default('-') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">All available students are already in this drive!</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 d-flex justify-content-between">
+                    <span class="text-muted small"><span id="selectedCount">0</span> students selected</span>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4"><i class="fas fa-check me-2"></i>Add Selected to Drive</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simple table search & select-all logic for the modal
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById("studentSearchInput");
+        const tableRows = document.querySelectorAll("#availableStudentsTable tbody tr");
+        
+        if(searchInput) {
+            searchInput.addEventListener("keyup", function() {
+                const term = this.value.toLowerCase();
+                tableRows.forEach(row => {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(term) ? "" : "none";
+                });
+            });
+        }
+
+        const selectAll = document.getElementById("selectAllCheckbox");
+        const checkboxes = document.querySelectorAll(".student-checkbox");
+        const countSpan = document.getElementById("selectedCount");
+
+        function updateCount() {
+            const checked = document.querySelectorAll(".student-checkbox:checked").length;
+            countSpan.innerText = checked;
+        }
+
+        if(selectAll) {
+            selectAll.addEventListener("change", function() {
+                checkboxes.forEach(cb => {
+                    // Only check visible rows
+                    const row = cb.closest("tr");
+                    if(row.style.display !== "none") {
+                        cb.checked = selectAll.checked;
+                    }
+                });
+                updateCount();
+            });
+        }
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener("change", updateCount);
+        });
+    });
+</script>
+
+{% endblock %}

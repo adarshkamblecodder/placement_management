@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}Audit Log - {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0" style="color: var(--text-main);">
+            <i class="fas fa-shield-alt text-primary me-2"></i>Admin Audit Log
+        </h2>
+        <p class="text-muted small mb-0">Record of all administrative record changes, placement status updates, and student modifications</p>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card p-4 mb-4 border-0 shadow-sm">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-sm-6 col-md-3">
+            <label class="form-label text-muted fw-bold small">Search keyword</label>
+            <input type="text" name="q" class="form-control" placeholder="Admin, ID, details..." value="{{ query.q | default('') }}">
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label text-muted fw-bold small">Action</label>
+            <select name="action" class="form-select">
+                <option value="">All Actions</option>
+                {% for a in actions %}
+                <option value="{{ a }}" {% if query.action == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label text-muted fw-bold small">Target Table</label>
+            <select name="table" class="form-select">
+                <option value="">All Tables</option>
+                {% for t in tables %}
+                <option value="{{ t }}" {% if query.table == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label text-muted fw-bold small">From Date</label>
+            <input type="date" name="from" class="form-control" value="{{ query.from | default('') }}">
+        </div>
+        <div class="col-sm-6 col-md-2">
+            <label class="form-label text-muted fw-bold small">To Date</label>
+            <input type="date" name="to" class="form-control" value="{{ query.to | default('') }}">
+        </div>
+        {# col-md-1 was too narrow for two buttons — widened to col-md-1 auto with flex #}
+        <div class="col-sm-6 col-md-1 d-flex gap-2 align-items-end" style="min-width: fit-content;">
+            <button type="submit" class="btn btn-primary py-2 px-3" title="Apply Filters">
+                <i class="fas fa-search"></i>
+            </button>
+            <a href="/admin/audit-log/" class="btn btn-outline-secondary py-2 px-3" title="Clear Filters">
+                <i class="fas fa-times"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Logs Table -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 80px;">Log ID</th>
+                    <th style="width: 170px;">Timestamp</th>
+                    <th style="width: 130px;">Admin</th>
+                    <th style="width: 180px;">Action</th>
+                    <th style="width: 150px;">Target</th>
+                    <th>Details / Changes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="text-muted fw-semibold">#{{ log.id }}</td>
+                    <td class="small text-muted">
+                        <i class="far fa-clock me-1 text-primary"></i>{{ log.timestamp | default('—') }}
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                            <i class="fas fa-user-shield me-1"></i>{{ log.admin_id | default('Admin') }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if 'DELETE' in log.action %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">{{ log.action }}</span>
+                        {% elif 'PLACEMENT' in log.action %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">{{ log.action }}</span>
+                        {% elif 'EDIT' in log.action or 'UPDATE' in log.action %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">{{ log.action }}</span>
+                        {% else %}
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">{{ log.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <code>{{ log.target_table }}</code>
+                        {% if log.target_id %}
+                        <div class="small fw-semibold mt-1">ID: {{ log.target_id }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="small font-monospace text-wrap" style="max-width: 400px;">
+                        {{ log.details | default('—') }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="fas fa-clipboard-list fa-3x mb-3 d-block opacity-40"></i>
+                        <h5>No audit logs found</h5>
+                        <p class="small text-muted">Administrative actions and status changes will be recorded here automatically.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {# ── Pagination ── #}
+    <div class="card-footer bg-white border-0 p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span class="text-muted small">
+        Showing <strong>{{ logs.length }}</strong> of <strong>{{ total }}</strong> log entries
+        (Page {{ currentPage }} of {{ totalPages }})
+      </span>
+      {% if totalPages > 1 %}
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          {% if currentPage > 1 %}
+          <li class="page-item">
+            <a class="page-link rounded-3" href="?{% if query.q %}q={{ query.q }}&{% endif %}{% if query.action %}action={{ query.action }}&{% endif %}{% if query.table %}table={{ query.table }}&{% endif %}{% if query.from %}from={{ query.from }}&{% endif %}{% if query.to %}to={{ query.to }}&{% endif %}page={{ currentPage - 1 }}">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          {% endif %}
+          {% for p in range(1, totalPages + 1) %}
+            {% if p == currentPage %}
+            <li class="page-item active"><span class="page-link rounded-3">{{ p }}</span></li>
+            {% elif p == 1 or p == totalPages or (p >= currentPage - 2 and p <= currentPage + 2) %}
+            <li class="page-item">
+              <a class="page-link rounded-3" href="?{% if query.q %}q={{ query.q }}&{% endif %}{% if query.action %}action={{ query.action }}&{% endif %}{% if query.table %}table={{ query.table }}&{% endif %}{% if query.from %}from={{ query.from }}&{% endif %}{% if query.to %}to={{ query.to }}&{% endif %}page={{ p }}">{{ p }}</a>
+            </li>
+            {% elif p == currentPage - 3 or p == currentPage + 3 %}
+            <li class="page-item disabled"><span class="page-link rounded-3">…</span></li>
+            {% endif %}
+          {% endfor %}
+          {% if currentPage < totalPages %}
+          <li class="page-item">
+            <a class="page-link rounded-3" href="?{% if query.q %}q={{ query.q }}&{% endif %}{% if query.action %}action={{ query.action }}&{% endif %}{% if query.table %}table={{ query.table }}&{% endif %}{% if query.from %}from={{ query.from }}&{% endif %}{% if query.to %}to={{ query.to }}&{% endif %}page={{ currentPage + 1 }}">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+</div>
+{% endblock %}

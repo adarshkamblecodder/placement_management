@@ -1,0 +1,1297 @@
+{% extends 'base.html' %}
+{% block title %}Students Directory — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+  {# ── Header / Hero ── #}
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="fw-bold mb-0" style="color: var(--text-main); font-weight: 700; letter-spacing: -0.02em;">
+          Candidate Directory
+        </h2>
+        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 small">
+          {{ COLLEGE_NAME }}
+        </span>
+      </div>
+      <p class="text-muted small mb-0">
+        Manage student profiles, academic records, bulk shortlists, and placement allocations
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-success px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#importModal">
+        <i class="fas fa-file-excel"></i>
+        <span>Import Excel / CSV</span>
+      </button>
+      <button class="btn btn-primary px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+        <i class="fas fa-user-plus"></i>
+        <span class="text-white">Add Student</span>
+      </button>
+      {% if showAll %}
+      <a href="/students/" class="btn btn-outline-secondary px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
+        <i class="fas fa-user-clock"></i>
+        <span>Unplaced Only</span>
+      </a>
+      {% else %}
+      <a href="/students/?showAll=1" class="btn btn-outline-secondary px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
+        <i class="fas fa-users"></i>
+        <span>Show All</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Mini Metric KPI Cards ── #}
+  <div class="row g-3 mb-4" style="perspective: 1000px;" id="kpiCardsContainer">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: var(--card-bg);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Total Pool</span>
+          <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="fas fa-users small"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-0" style="color: var(--text-main);">{{ stats.total | default(object_list.length) }}</h3>
+        <span class="text-muted small">Registered Students</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: var(--card-bg);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Placed</span>
+          <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="fas fa-check-circle small"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-0 text-success">{{ stats.placed | default(0) }}</h3>
+        <span class="text-muted small">{{ stats.placedPercentage | default(0) }}% Conversion Rate</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: var(--card-bg);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Active Unplaced</span>
+          <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="fas fa-clock small"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold mb-0 text-warning">{{ stats.unplaced | default(0) }}</h3>
+        <span class="text-muted small">Ready for Next Drive</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="background: var(--card-bg);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Drive Context</span>
+          <div class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="fas fa-briefcase small"></i>
+          </div>
+        </div>
+        <h5 class="fw-bold mb-0 text-truncate" style="color: var(--text-main);">
+          {{ driveContext.companyName | default('All Drives') }}
+        </h5>
+        <span class="text-muted small">{{ driveContext.jobRole | default('Direct Management') }}</span>
+      </div>
+    </div>
+  </div>
+
+  {# ── Placement Visual Progress Bar ── #}
+  <div class="mb-4" id="placementProgressBarContainer">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="small fw-bold text-muted">Overall Placement Progress</span>
+      <span class="small fw-bold text-success">{{ stats.placedPercentage | default(0) }}% Placed</span>
+    </div>
+    <div class="progress rounded-pill shadow-sm" style="height: 12px; background-color: rgba(245, 158, 11, 0.2);">
+      <div class="progress-bar bg-success rounded-pill" role="progressbar" style="width: {{ stats.placedPercentage | default(0) }}%" aria-valuenow="{{ stats.placedPercentage | default(0) }}" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-1">
+      <span class="small text-muted" style="font-size: 0.75rem;">{{ stats.placed | default(0) }} Placed Candidates</span>
+      <span class="small text-warning" style="font-size: 0.75rem;">{{ stats.unplaced | default(0) }} Unplaced Remaining</span>
+    </div>
+  </div>
+
+  {# ── Flash Messages ── #}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.type }} alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+    <i class="fas {% if msg.type == 'success' %}fa-check-circle text-success{% else %}fa-exclamation-circle text-danger{% endif %} me-2"></i>
+    {{ msg.text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  {# ── Import Warnings (if any) ── #}
+  {% if importErrors and importErrors.length > 0 %}
+  <div class="alert alert-warning alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center mb-2">
+      <i class="fas fa-exclamation-triangle fa-lg me-2 text-warning"></i>
+      <strong class="fs-6">Import Validation Feedback ({{ importErrors.length }} row(s) skipped):</strong>
+    </div>
+    <ul class="mb-0 small" style="max-height: 160px; overflow-y: auto;">
+      {% for err in importErrors %}
+      <li>{{ err }}</li>
+      {% endfor %}
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endif %}
+
+  {# ── Shortlist Active Banner ── #}
+  {% if driveContext %}
+  <div class="card border-0 rounded-4 p-3 mb-4 shadow-sm" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%); border-left: 4px solid var(--primary) !important;">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="badge bg-primary text-white">Active Shortlisting Mode</span>
+          <h5 class="fw-bold mb-0 text-primary">{{ driveContext.companyName }} — {{ driveContext.jobRole }}</h5>
+        </div>
+        <p class="mb-0 small text-muted">
+          <i class="fas fa-calendar-alt me-1 text-primary"></i>Interview Date: <strong>{{ driveContext.interviewDate | formatDateDMY | default(driveContext.interviewDate) }}</strong>
+          &bull; <i class="fas fa-graduation-cap me-1 text-primary"></i>Min CGPA: <strong>{{ driveContext.minCGPA }}</strong>
+          &bull; <i class="fas fa-briefcase me-1 text-primary"></i>Openings: <strong>{{ driveContext.numberOfOpenings }}</strong>
+        </p>
+      </div>
+      <a href="/students/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Exit Shortlist Mode</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Search & Filter Controls ── #}
+  <div class="card border-0 shadow-sm rounded-4 p-4 mb-3" style="background: var(--card-bg);">
+    <form class="row g-3 align-items-end" method="get" id="mainSearchForm">
+      {% if driveContext %}
+      <input type="hidden" name="driveId" value="{{ driveContext.id }}">
+      {% endif %}
+      {% if showAll %}<input type="hidden" name="showAll" value="1">{% endif %}
+      {# Carry profile filters through search form ── #}
+      {% if query.sort %}<input type="hidden" name="sort" value="{{ query.sort }}">{% endif %}
+      {% if query.hasLiveProject %}<input type="hidden" name="hasLiveProject" value="{{ query.hasLiveProject }}">{% endif %}
+      {% if query.minLiveProjects %}<input type="hidden" name="minLiveProjects" value="{{ query.minLiveProjects }}">{% endif %}
+      {% if query.hasCompletedInternship %}<input type="hidden" name="hasCompletedInternship" value="{{ query.hasCompletedInternship }}">{% endif %}
+      {% if query.hasOngoingInternship %}<input type="hidden" name="hasOngoingInternship" value="{{ query.hasOngoingInternship }}">{% endif %}
+      {% if query.hasResume %}<input type="hidden" name="hasResume" value="{{ query.hasResume }}">{% endif %}
+      {% if query.hasCertifications %}<input type="hidden" name="hasCertifications" value="{{ query.hasCertifications }}">{% endif %}
+
+      <div class="col-12 col-md-5">
+        <label class="form-label small text-muted fw-bold mb-1">
+          <i class="fas fa-search me-1 text-primary"></i>Candidate Keyword
+        </label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-0"><i class="fas fa-user text-muted"></i></span>
+          <input type="text" name="q" id="studentSearchQ" class="form-control border-0 bg-light" placeholder="Search by name, student ID..." value="{{ query.q }}">
+          {% if query.q %}
+          <button type="button" class="btn btn-light border-0 text-muted" onclick="document.getElementById('studentSearchQ').value=''; this.form.submit();">
+            <i class="fas fa-times"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label small text-muted fw-bold mb-1">
+          <i class="fas fa-code me-1 text-primary"></i>Technical Skill <span class="text-muted fw-normal">(must match all)</span>
+        </label>
+        <div class="d-flex align-items-start gap-2">
+          <div style="flex: 1; min-width: 0;">
+            <select name="skills" id="studentSearchSkills" class="form-control border-0 bg-light" multiple></select>
+          </div>
+          <button class="btn btn-primary rounded-3 flex-shrink-0" type="button" onclick="performSearch()" title="Apply Skills Filter" style="padding: 0.6rem 1rem;">
+            <i class="fas fa-filter"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label small text-muted fw-bold mb-1">Branch</label>
+        <select name="branch" id="studentSearchBranch" class="form-control border-0 bg-light" multiple>
+          {% for b in branches %}
+          <option value="{{ b }}">{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-1 d-flex gap-2">
+        <a href="/students/{% if driveContext %}?driveId={{ driveContext.id }}{% endif %}" class="btn btn-light py-2 rounded-3 text-muted w-100" title="Reset All Filters">
+          <i class="fas fa-undo"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+
+  {# ── Profile-Based Filters ── #}
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background: var(--card-bg);">
+    <form method="get" id="profileFilterForm">
+      {% if driveContext %}<input type="hidden" name="driveId" value="{{ driveContext.id }}">{% endif %}
+      {% if query.q %}<input type="hidden" name="q" value="{{ query.q }}">{% endif %}
+      {% if query.branch %}<input type="hidden" name="branch" value="{{ query.branch }}">{% endif %}
+      {% if query.skills %}<input type="hidden" name="skills" value="{{ query.skills }}">{% endif %}
+
+      <div class="row g-3 align-items-start">
+
+        {# ── CGPA Sort ── #}
+        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+          <div class="small text-muted fw-bold text-uppercase mb-2" style="font-size:.68rem;letter-spacing:.06em;">
+            <i class="fas fa-graduation-cap me-1 text-primary"></i>CGPA Sort
+          </div>
+          <select name="sort" id="pf_sort" class="form-select form-select-sm border-0 bg-light rounded-3">
+            <option value=""         {% if not query.sort %}selected{% endif %}>Default Order</option>
+            <option value="cgpa_asc" {% if query.sort == 'cgpa_asc' %}selected{% endif %}>↑ Low → High</option>
+            <option value="cgpa_desc"{% if query.sort == 'cgpa_desc' %}selected{% endif %}>↓ High → Low</option>
+          </select>
+        </div>
+
+        {# ── Projects ── #}
+        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+          <div class="small text-muted fw-bold text-uppercase mb-2" style="font-size:.68rem;letter-spacing:.06em;">
+            <i class="fas fa-diagram-project me-1 text-danger"></i>Projects
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" name="hasLiveProject" id="pf_liveProj"
+                   value="1" {% if query.hasLiveProject == '1' %}checked{% endif %}>
+            <label class="form-check-label small mb-0" for="pf_liveProj">
+              <span class="badge bg-danger me-1" style="font-size:.65rem;">LIVE</span>≥
+            </label>
+            <input type="number" id="pf_minLiveProjects" name="minLiveProjects"
+                   value="{{ query.minLiveProjects | default('1') }}"
+                   min="1" max="99"
+                   class="form-control form-control-sm border-0 bg-light text-center fw-bold p-0"
+                   style="width:42px; border-radius:6px;"
+                   title="Minimum number of Live Projects">
+            <span class="small text-muted">Live Project(s)</span>
+          </div>
+        </div>
+
+        {# ── Internships ── #}
+        <div class="col-12 col-sm-6 col-md-3 col-lg-3">
+          <div class="small text-muted fw-bold text-uppercase mb-2" style="font-size:.68rem;letter-spacing:.06em;">
+            <i class="fas fa-laptop-code me-1 text-info"></i>Internships
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" name="hasCompletedInternship" id="pf_doneIntern"
+                   value="1" {% if query.hasCompletedInternship == '1' %}checked{% endif %}>
+            <label class="form-check-label small" for="pf_doneIntern">
+              <i class="fas fa-check-circle text-success me-1"></i>Internship Completed
+            </label>
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" name="hasOngoingInternship" id="pf_ongoingIntern"
+                   value="1" {% if query.hasOngoingInternship == '1' %}checked{% endif %}>
+            <label class="form-check-label small" for="pf_ongoingIntern">
+              <i class="fas fa-spinner text-warning me-1"></i>Internship Ongoing
+            </label>
+          </div>
+        </div>
+
+        {# ── Profile ── #}
+        <div class="col-12 col-sm-6 col-md-3 col-lg-3">
+          <div class="small text-muted fw-bold text-uppercase mb-2" style="font-size:.68rem;letter-spacing:.06em;">
+            <i class="fas fa-user-check me-1 text-secondary"></i>Profile
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" name="hasResume" id="pf_resume"
+                   value="1" {% if query.hasResume == '1' %}checked{% endif %}>
+            <label class="form-check-label small" for="pf_resume">
+              <i class="fas fa-file-alt text-danger me-1"></i>Resume Uploaded
+            </label>
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" name="hasCertifications" id="pf_certs"
+                   value="1" {% if query.hasCertifications == '1' %}checked{% endif %}>
+            <label class="form-check-label small" for="pf_certs">
+              <i class="fas fa-certificate text-warning me-1"></i>Certifications Available
+            </label>
+          </div>
+        </div>
+
+        {# ── Active filter badges + Clear ── #}
+        <div class="col-12 col-lg-2 d-flex flex-column justify-content-end">
+          {% set anyFilter = query.sort or query.hasLiveProject or query.hasCompletedInternship or query.hasOngoingInternship or query.hasResume or query.hasCertifications %}
+          {% if anyFilter %}
+          <a href="/students/?{% if driveContext %}driveId={{ driveContext.id }}&{% endif %}{% if query.q %}q={{ query.q }}&{% endif %}{% if query.branch %}branch={{ query.branch }}&{% endif %}{% if query.skills %}skills={{ query.skills }}{% endif %}"
+             class="btn btn-sm btn-outline-danger rounded-pill px-3 mb-1">
+            <i class="fas fa-times me-1"></i>Clear Profile Filters
+          </a>
+          {% endif %}
+          <div class="text-muted small mt-1">
+            Showing <strong class="text-primary">{{ object_list.length }}</strong> candidate(s)
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+
+  {# ── Bulk Action Shortlist Toolbar ── #}
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background: var(--card-bg);">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="selectAllStudents" style="cursor: pointer; width: 1.25rem; height: 1.25rem;">
+          <label class="form-check-label fw-bold small ms-1" for="selectAllStudents" style="cursor: pointer; color: var(--text-main);">
+            Select All Candidates
+          </label>
+        </div>
+        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fw-semibold" id="selectedCountBadge">
+          0 selected
+        </span>
+        <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 fw-semibold d-none" id="openingsLimitBadge">
+          Select a drive to see opening limit
+        </span>
+      </div>
+
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <label class="small text-muted fw-bold text-nowrap mb-0 d-none d-lg-block">
+          <i class="fas fa-building me-1 text-primary"></i>Shortlist Target:
+        </label>
+        <select class="form-select form-select-sm border-0 bg-light rounded-3" id="bulkDriveSelect" style="min-width: 240px;">
+          <option value="">-- Choose Placement Drive --</option>
+          {% for d in availableDrives %}
+          <option value="{{ d.id }}" data-openings="{{ d.numberOfOpenings | default(1) }}" {% if driveContext and driveContext.id == d.id %}selected{% endif %}>
+            {{ d.company.name }} — {{ d.jobRole }} ({{ d.numberOfOpenings | default(1) }} openings)
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary rounded-3 px-3 py-2 shadow-sm text-nowrap" id="bulkShortlistBtn" disabled>
+          <i class="fas fa-user-check me-1"></i>Shortlist Selected
+        </button>
+        <button class="btn btn-sm btn-success rounded-3 px-3 py-2 shadow-sm text-nowrap" id="bulkCreateLoginBtn" disabled>
+          <i class="fas fa-key me-1"></i>Create Logins &amp; Email
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Student Table Card ── #}
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="background: var(--card-bg);" id="studentTableCard">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="table-layout: fixed; width: 100%;">
+        <thead style="background: var(--table-head-bg); border-bottom: 1px solid var(--border-color);">
+          <tr class="text-muted small text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">
+            <th style="width: 36px;" class="ps-3"></th>
+            <th style="width: 30px;">#</th>
+            <th style="width: 22%;">Candidate</th>
+            <th style="width: 8%;">Branch</th>
+            <th style="width: 22%;">Skills</th>
+            <th style="width: 7%;">
+              {# ── Sortable CGPA header ── #}
+              {% set baseUrl = '/students/?' %}
+              {% if driveContext %}{% set baseUrl = baseUrl + 'driveId=' + driveContext.id + '&' %}{% endif %}
+              {% if query.q %}{% set baseUrl = baseUrl + 'q=' + query.q + '&' %}{% endif %}
+              {% if query.branch %}{% set baseUrl = baseUrl + 'branch=' + query.branch + '&' %}{% endif %}
+              {% if query.skills %}{% set baseUrl = baseUrl + 'skills=' + query.skills + '&' %}{% endif %}
+              {% if query.hasLiveProject %}{% set baseUrl = baseUrl + 'hasLiveProject=' + query.hasLiveProject + '&' %}{% endif %}
+              {% if query.hasCompletedInternship %}{% set baseUrl = baseUrl + 'hasCompletedInternship=' + query.hasCompletedInternship + '&' %}{% endif %}
+              {% if query.hasOngoingInternship %}{% set baseUrl = baseUrl + 'hasOngoingInternship=' + query.hasOngoingInternship + '&' %}{% endif %}
+              {% if query.hasResume %}{% set baseUrl = baseUrl + 'hasResume=' + query.hasResume + '&' %}{% endif %}
+              {% if query.hasCertifications %}{% set baseUrl = baseUrl + 'hasCertifications=' + query.hasCertifications + '&' %}{% endif %}
+              {% if query.sort == 'cgpa_asc' %}
+                <a href="{{ baseUrl }}sort=cgpa_desc" class="text-decoration-none text-muted" title="Sort CGPA High → Low">
+                  CGPA <i class="fas fa-sort-amount-up text-primary"></i>
+                </a>
+              {% elif query.sort == 'cgpa_desc' %}
+                <a href="{{ baseUrl }}" class="text-decoration-none text-muted" title="Clear CGPA sort">
+                  CGPA <i class="fas fa-sort-amount-down text-primary"></i>
+                </a>
+              {% else %}
+                <a href="{{ baseUrl }}sort=cgpa_asc" class="text-decoration-none text-muted" title="Sort CGPA Low → High">
+                  CGPA <i class="fas fa-sort text-muted opacity-50"></i>
+                </a>
+              {% endif %}
+            </th>
+            <th style="width: 12%;">Status</th>
+            <th style="width: 18%;" class="text-end pe-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody style="border-top: none;">
+          {% for student in object_list %}
+          {% set belowCgpa = driveContext and driveContext.minCGPA and student.cgpa and (student.cgpa | float) < (driveContext.minCGPA | float) %}
+          <tr style="transition: background-color 0.2s;{% if belowCgpa %} background-color: rgba(239,68,68,.05);{% endif %}"
+              {% if belowCgpa %}title="CGPA {{ student.cgpa }} is below the drive minimum of {{ driveContext.minCGPA }}"{% endif %}>
+            <td class="ps-3">
+              <input class="form-check-input student-checkbox" type="checkbox" value="{{ student.student_id }}" style="cursor: pointer; width: 1.15rem; height: 1.15rem;">
+            </td>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if student.profile_photo %}
+                <img src="/media/{{ student.profile_photo }}" class="rounded-circle shadow-sm flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover;">
+                {% else %}
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 36px; height: 36px;">
+                  <i class="fas fa-user-graduate small"></i>
+                </div>
+                {% endif %}
+                <div style="min-width:0;">
+                  <a href="/students/{{ student.student_id }}/profile/" class="fw-bold text-decoration-none d-block text-truncate" style="color: var(--text-main); font-size:.875rem;">
+                    {{ student.name | default('Unnamed') }}
+                  </a>
+                  <div class="text-muted text-truncate" style="font-size:.72rem;">{{ student.email | default('—') }}</div>
+                  <div class="font-monospace text-muted" style="font-size:.68rem;">{{ student.student_id }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-size:.78rem; line-height:1.4;">
+                <span class="fw-semibold" style="color:var(--text-main);">{{ student.branch | default('—') }}</span>
+                {% if student.year %}<div class="text-muted">Yr {{ student.year }}</div>{% endif %}
+              </div>
+            </td>
+            <td>
+              {% if student.skillsDisplay %}
+              {% set skillList = student.skillsDisplay.split(', ') %}
+              {% set visibleSkills = skillList.slice(0, 3) %}
+              {% set extraCount = skillList.length - 3 %}
+              <div class="d-flex flex-wrap gap-1 align-items-center" title="{{ student.skillsDisplay }}">
+                {% for skill in visibleSkills %}
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 px-2 py-1" style="font-size:.68rem; white-space:nowrap;">{{ skill }}</span>
+                {% endfor %}
+                {% if extraCount > 0 %}
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1" style="font-size:.68rem;" title="{{ skillList.slice(3).join(', ') }}">+{{ extraCount }}</span>
+                {% endif %}
+              </div>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if student.cgpa %}
+                {% if student.cgpa >= 8.0 %}
+                <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold" style="font-size:.78rem;">
+                  {{ student.cgpa | floatformat(2) }}
+                </span>
+                {% elif student.cgpa >= 6.5 %}
+                <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 fw-bold" style="font-size:.78rem;">
+                  {{ student.cgpa | floatformat(2) }}
+                </span>
+                {% else %}
+                <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 fw-bold" style="font-size:.78rem;">
+                  {{ student.cgpa | floatformat(2) }}
+                </span>
+                {% endif %}
+                {% if belowCgpa %}
+                <div class="text-danger" style="font-size:.62rem;"><i class="fas fa-exclamation-triangle me-1"></i>Below min</div>
+                {% endif %}
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if student.placement_status == 'Placed' %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" style="font-size:.72rem;">
+                <i class="fas fa-check-circle me-1"></i>Placed
+              </span>
+              {% if student.placement_company %}
+              <div class="text-muted text-truncate" style="font-size:.68rem; max-width:110px;" title="{{ student.placement_company }}">{{ student.placement_company }}</div>
+              {% endif %}
+              {% else %}
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-1" style="font-size:.72rem;">Unplaced</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-3">
+              <div class="d-flex align-items-center justify-content-end gap-1 flex-nowrap">
+                {# ── Login status badge — 3 states ── #}
+                {% set lstatus = loginStatusMap[student.student_id] %}
+                {% if lstatus == 'logged_in' %}
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" title="Mail sent — student has logged in" style="font-size:.65rem;">
+                  <i class="fas fa-check-circle"></i>
+                </span>
+                {% elif lstatus == 'sent' %}
+                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1" title="Mail sent — waiting for first login" style="font-size:.65rem;">
+                  <i class="fas fa-envelope-circle-check"></i>
+                </span>
+                {% elif lstatus == 'no_email' %}
+                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1" title="Login created but mail not sent" style="font-size:.65rem;">
+                  <i class="fas fa-envelope-open"></i>
+                </span>
+                {% else %}
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1" title="No login account yet" style="font-size:.65rem;">
+                  <i class="fas fa-times-circle"></i>
+                </span>
+                {% endif %}
+
+                <div class="btn-group shadow-sm rounded-3 overflow-hidden">
+                  <a href="/students/{{ student.student_id }}/interview-rounds/" class="btn btn-sm btn-light px-2" title="Interview Evaluation Timeline">
+                    <i class="fas fa-list-ol text-info" style="font-size:.8rem;"></i>
+                  </a>
+                  <button type="button" class="btn btn-sm btn-light px-2 single-login-btn"
+                          data-student-id="{{ student.student_id }}"
+                          title="{% if lstatus == 'none' %}Create Login &amp; Send Mail{% else %}Resend Credentials{% endif %}">
+                    {% if lstatus == 'none' %}
+                    <i class="fas fa-paper-plane text-primary" style="font-size:.8rem;"></i>
+                    {% else %}
+                    <i class="fas fa-rotate-right text-warning" style="font-size:.8rem;"></i>
+                    {% endif %}
+                  </button>
+                  <a href="/students/{{ student.student_id }}/placement/" class="btn btn-sm btn-light px-2" title="Record Placement Offer">
+                    <i class="fas fa-briefcase text-success" style="font-size:.8rem;"></i>
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-5">
+              <div class="text-muted opacity-50 mb-3">
+                <i class="fas fa-users-slash fa-3x"></i>
+              </div>
+              <h5 class="fw-bold" style="color: var(--text-main);">No Candidates Found</h5>
+              <p class="text-muted small mb-3">No students match your filter criteria. Try resetting filters or import new candidates.</p>
+              <a href="/students/" class="btn btn-sm btn-primary rounded-pill px-4">Reset All Filters</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="card-footer bg-white border-0 p-3 d-flex justify-content-between align-items-center" style="background: var(--card-bg) !important;">
+      <span class="text-muted small">
+        Showing <strong>{{ object_list.length }}</strong> candidate(s)
+      </span>
+      <a href="#top" class="text-decoration-none small text-muted"><i class="fas fa-arrow-up me-1"></i>Back to top</a>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   MODAL: Import Students (Excel / CSV)
+═══════════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+      <div class="modal-header bg-success text-white p-4">
+        <div>
+          <h5 class="modal-title fw-bold mb-1"><i class="fas fa-file-excel me-2"></i>Bulk Import Candidates</h5>
+          <p class="mb-0 small text-white-50">Upload an Excel spreadsheet or CSV file to batch-import candidate records</p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        {# Download Sample CSV Button #}
+        <div class="card p-3 mb-4 rounded-3 border-0" style="background: rgba(16, 185, 129, 0.08);">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-bold text-success small mb-1"><i class="fas fa-file-csv me-1"></i>Sample Template</div>
+              <p class="mb-0 text-muted small">Download the pre-formatted CSV template with valid column headers</p>
+            </div>
+            <a href="/students/sample-excel/" class="btn btn-sm btn-success rounded-pill px-3 text-nowrap">
+              <i class="fas fa-download me-1"></i>Sample Excel
+            </a>
+            <a href="/students/sample-csv/" class="btn btn-sm btn-outline-success rounded-pill px-3 text-nowrap">
+              <i class="fas fa-file-csv me-1"></i>Sample CSV
+            </a>
+          </div>
+        </div>
+
+        <form method="post" action="/students/import/" enctype="multipart/form-data">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          
+          <div class="mb-4">
+            <label class="form-label fw-bold small text-muted mb-2">Select Spreadsheet (.xlsx, .xls, .csv)</label>
+            <input type="file" name="excel_file" class="form-control rounded-3 p-2 bg-light border-0" accept=".xlsx,.xls,.csv" required>
+            <div class="form-text small text-muted mt-2">
+              Required headers: <code>Student ID</code>, <code>Full Name</code>, <code>Gender</code> (optional), <code>Email ID</code>, <code>Branch</code>, <code>Current Year</code>, <code>CGPA</code>.
+              Mobile number is collected later when the student logs in.
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success rounded-3 px-4 shadow-sm">
+              <i class="fas fa-upload me-2"></i>Upload &amp; Process
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   MODAL: Add Single Student
+═══════════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+      <div class="modal-header bg-primary text-white p-4">
+        <div>
+          <h5 class="modal-title fw-bold mb-1"><i class="fas fa-user-plus me-2"></i>Register New Candidate</h5>
+          <p class="mb-0 small text-white-50">Create an individual student profile in the placement registry</p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/students/add/">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Student ID / Roll No. <span class="text-danger">*</span></label>
+              <input type="text" name="student_id" class="form-control rounded-3 bg-light border-0" placeholder="e.g. 2024CS099" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="full_name" class="form-control rounded-3 bg-light border-0" placeholder="e.g. Rahul Sharma" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Gender</label>
+              <select name="gender" class="form-select rounded-3 bg-light border-0">
+                <option value="">-- Select Gender --</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Email Address <span class="text-danger">*</span></label>
+              <input type="email" name="email" class="form-control rounded-3 bg-light border-0" placeholder="e.g. rahul@college.edu" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Branch / Discipline <span class="text-danger">*</span></label>
+              <select name="branch" class="form-select rounded-3 bg-light border-0" required>
+                <option value="">-- Choose Branch --</option>
+                {% for b in branches %}
+                <option value="{{ b }}">{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Academic Year <span class="text-danger">*</span></label>
+              <input type="number" name="year" min="1" max="4" class="form-control rounded-3 bg-light border-0" placeholder="e.g. 4" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Latest CGPA (0.00 – 10.00)</label>
+              <input type="number" step="0.01" min="0" max="10" name="cgpa" class="form-control rounded-3 bg-light border-0" placeholder="e.g. 8.50">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-muted">Active Backlogs</label>
+              <input type="number" min="0" name="backlogs" class="form-control rounded-3 bg-light border-0" value="0">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-0 p-3">
+          <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary rounded-3 px-4 shadow-sm">
+            <i class="fas fa-save me-2"></i>Save Candidate
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════
+   MODAL: Shortlist Confirmation
+═══════════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="shortlistModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+      <div class="modal-header bg-primary text-white p-4">
+        <div>
+          <h5 class="modal-title fw-bold mb-1"><i class="fas fa-list-check me-2"></i>Generate Recruitment Shortlist</h5>
+          <p class="mb-0 small text-white-50">Attach selected candidates to a Placement Drive pipeline</p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Target Placement Drive <span class="text-danger">*</span></label>
+          <select id="modalDriveSelect" class="form-select rounded-3 bg-light border-0" required>
+            <option value="">-- Select Placement Drive --</option>
+            {% for d in availableDrives %}
+            <option value="{{ d.id }}" data-openings="{{ d.numberOfOpenings | default(1) }}" {% if driveContext and driveContext.id == d.id %}selected{% endif %}>
+              {{ d.company.name }} — {{ d.jobRole }} ({{ d.numberOfOpenings | default(1) }} openings)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Shortlist Title / Label</label>
+          <input type="text" id="shortlistTitleInput" class="form-control rounded-3 bg-light border-0" placeholder="e.g. Google SDE-1 Round 1 Shortlist">
+        </div>
+        <div class="card p-3 border-0 rounded-3 mb-0" style="background: rgba(14, 165, 233, 0.08);">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-user-check text-primary"></i>
+            <span class="small text-muted">
+              Shortlisting <strong class="text-primary" id="modalSelectedCount">0</strong> candidate(s)
+              for a drive with <strong class="text-primary" id="modalOpeningsLimit">—</strong> opening(s).
+              All shortlisted students will appear for Round 1. Final selections are made after all rounds.
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light border-0 p-3">
+        <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary rounded-3 px-4 shadow-sm" id="confirmShortlistSubmitBtn">
+          <i class="fas fa-check me-1"></i> Confirm &amp; Route to Drive
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.cert-badge {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.cert-badge:hover {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(14, 165, 233, 0.25);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const selectAll = document.getElementById('selectAllStudents');
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  const countBadge = document.getElementById('selectedCountBadge');
+  const bulkBtn = document.getElementById('bulkShortlistBtn');
+  const bulkLoginBtn = document.getElementById('bulkCreateLoginBtn');
+  const driveSelect = document.getElementById('bulkDriveSelect');
+  const modalDriveSelect = document.getElementById('modalDriveSelect');
+  const shortlistModalEl = new bootstrap.Modal(document.getElementById('shortlistModal'));
+  const modalCount = document.getElementById('modalSelectedCount');
+  const modalOpeningsLimit = document.getElementById('modalOpeningsLimit');
+  const openingsLimitBadge = document.getElementById('openingsLimitBadge');
+  const titleInput = document.getElementById('shortlistTitleInput');
+  const confirmBtn = document.getElementById('confirmShortlistSubmitBtn');
+
+  function getActiveDriveSelect() {
+    if (driveSelect && driveSelect.value) return driveSelect;
+    if (modalDriveSelect && modalDriveSelect.value) return modalDriveSelect;
+    return driveSelect || modalDriveSelect;
+  }
+
+  // Returns the openings number purely for DISPLAY — never used as a cap.
+  function getSelectedDriveOpenings() {
+    const select = getActiveDriveSelect();
+    if (!select || !select.value) return null;
+    const openings = parseInt(select.options[select.selectedIndex]?.dataset?.openings, 10);
+    return Number.isFinite(openings) && openings > 0 ? openings : null;
+  }
+
+  function bindStudentCheckbox(cb) {
+    cb.addEventListener('change', updateSelection);
+  }
+
+  function updateSelection() {
+    const checked = document.querySelectorAll('.student-checkbox:checked');
+    const count = checked.length;
+    const openings = getSelectedDriveOpenings();
+
+    // Show count badge — openings is info only, not a cap
+    countBadge.textContent = count + ' selected';
+
+    if (openings) {
+      if (openingsLimitBadge) {
+        openingsLimitBadge.textContent = openings + ' opening(s) available';
+        openingsLimitBadge.classList.remove('d-none');
+      }
+      if (modalOpeningsLimit) modalOpeningsLimit.textContent = String(openings);
+    } else {
+      if (openingsLimitBadge) openingsLimitBadge.classList.add('d-none');
+      if (modalOpeningsLimit) modalOpeningsLimit.textContent = '—';
+    }
+
+    if (modalCount) modalCount.textContent = String(count);
+    // Only disable when nothing selected — no cap on how many can be shortlisted
+    bulkBtn.disabled = count === 0;
+    if (bulkLoginBtn) bulkLoginBtn.disabled = count === 0;
+
+    const allBoxes = document.querySelectorAll('.student-checkbox');
+    if (selectAll) {
+      selectAll.checked = count > 0 && count === allBoxes.length;
+      selectAll.indeterminate = count > 0 && count < allBoxes.length;
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', (e) => {
+      const allBoxes = document.querySelectorAll('.student-checkbox');
+      allBoxes.forEach((cb) => { cb.checked = e.target.checked; });
+      updateSelection();
+    });
+  }
+
+  checkboxes.forEach(bindStudentCheckbox);
+  if (driveSelect) {
+    driveSelect.addEventListener('change', () => {
+      if (modalDriveSelect) modalDriveSelect.value = driveSelect.value;
+      updateSelection();
+    });
+  }
+  if (modalDriveSelect) {
+    modalDriveSelect.addEventListener('change', () => {
+      if (driveSelect) driveSelect.value = modalDriveSelect.value;
+      updateSelection();
+      if (modalDriveSelect.value && !titleInput.value) {
+        const text = modalDriveSelect.options[modalDriveSelect.selectedIndex].text;
+        titleInput.value = 'Shortlist for ' + text.split('—')[0].trim();
+      }
+    });
+  }
+
+  bulkBtn?.addEventListener('click', () => {
+    const count = document.querySelectorAll('.student-checkbox:checked').length;
+    if (count === 0) {
+      alert('Please select at least one student.');
+      return;
+    }
+    if (!getActiveDriveSelect()?.value) {
+      alert('Please choose a placement drive first.');
+      if (driveSelect) driveSelect.focus();
+      return;
+    }
+    if (driveSelect && driveSelect.value && modalDriveSelect) {
+      modalDriveSelect.value = driveSelect.value;
+      const text = driveSelect.options[driveSelect.selectedIndex].text;
+      titleInput.value = 'Shortlist for ' + text.split('—')[0].trim();
+    }
+    updateSelection();
+    shortlistModalEl.show();
+  });
+
+  confirmBtn?.addEventListener('click', async () => {
+    const driveId = (modalDriveSelect && modalDriveSelect.value) || (driveSelect && driveSelect.value);
+    if (!driveId) {
+      alert('Please select a target Placement Drive.');
+      if (modalDriveSelect) modalDriveSelect.focus();
+      return;
+    }
+
+    const selectedIds = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+      alert('No students selected.');
+      return;
+    }
+
+    const shortlistName = titleInput.value.trim() || 'Drive Shortlist';
+
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+    try {
+      const response = await fetch('/shortlists/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': '{{ csrfToken }}'
+        },
+        body: JSON.stringify({
+          _csrf: '{{ csrfToken }}',
+          name: shortlistName,
+          driveId: Number(driveId),
+          studentIds: selectedIds
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        let msg = `${result.totalStudents} student(s) shortlisted for the drive.`;
+        if (typeof result.emailsSent === 'number' && result.emailsSent > 0) {
+          msg += ` ${result.emailsSent} notification email(s) sent.`;
+        }
+        if (result.emailsFailed > 0) {
+          msg += ` ${result.emailsFailed} email(s) failed.`;
+        }
+        if (result.openingsWarning) {
+          msg += ` ⚠ ${result.openingsWarning}`;
+        }
+        if (result.cgpaWarnings && result.cgpaWarnings.length > 0) {
+          msg += ` ⚠ CGPA below minimum: ${result.cgpaWarnings.join('; ')}`;
+        }
+        sessionStorage.setItem('shortlistSuccessMsg', msg);
+        window.location.href = '/shortlists';
+      } else {
+        alert('Failed to shortlist: ' + (result.error || 'Unknown error'));
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i> Confirm &amp; Route to Drive';
+      }
+    } catch (err) {
+      alert('Network error while creating shortlist.');
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i> Confirm &amp; Route to Drive';
+    }
+  });
+
+  // ── Bulk Create Logins ─────────────────────────────────────────────────
+  bulkLoginBtn?.addEventListener('click', async () => {
+    const selectedIds = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+      alert('Please select at least one student.');
+      return;
+    }
+    if (!confirm(`Create login accounts and send credentials to ${selectedIds.length} selected student(s)?`)) return;
+
+    bulkLoginBtn.disabled = true;
+    bulkLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+    const results = { sent: 0, failed: 0, skipped: 0, errors: [] };
+
+    for (const studentId of selectedIds) {
+      try {
+        const res = await fetch('/admin/student-logins/' + encodeURIComponent(studentId) + '/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ csrfToken }}' },
+          body: JSON.stringify({ _csrf: '{{ csrfToken }}' })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (data.reset) { results.skipped++; }
+          else { results.failed++; results.errors.push(studentId + ': ' + (data.message || 'Failed')); }
+        } else if (data.emailSent) {
+          results.sent++;
+        } else {
+          results.failed++;
+          results.errors.push(studentId + ': Login created but email not sent');
+        }
+      } catch (e) {
+        results.failed++;
+        results.errors.push(studentId + ': Network error');
+      }
+    }
+
+    bulkLoginBtn.disabled = false;
+    bulkLoginBtn.innerHTML = '<i class="fas fa-key me-1"></i>Create Logins &amp; Email';
+
+    let summary = `Done. Emails sent: ${results.sent}`;
+    if (results.skipped > 0) summary += `, already had login: ${results.skipped}`;
+    if (results.failed > 0) summary += `, failed: ${results.failed}`;
+    if (results.errors.length > 0) summary += `\n\nDetails:\n` + results.errors.slice(0, 10).join('\n');
+
+    showLoginToast(summary, results.failed > 0 ? 'warning' : 'success');
+    setTimeout(() => window.location.reload(), 3000);
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+  const choicesOptions = {
+    removeItemButton: true,
+    choices: typeof STANDARD_SKILLS !== 'undefined' ? STANDARD_SKILLS : [],
+    duplicateItemsAllowed: false,
+    paste: false,
+    searchEnabled: true,
+    searchPlaceholderValue: 'Search skills...',
+    placeholderValue: 'Select skills',
+    shouldSort: false,
+    itemSelectText: ''
+  };
+
+  const addSkillsInput = document.getElementById('addCandidateSkills');
+  if (addSkillsInput) {
+    new Choices(addSkillsInput, choicesOptions);
+    addSkillsInput.addEventListener('change', () => {
+      document.getElementById('addCandidateSkillsHidden').value = Array.from(addSkillsInput.selectedOptions).map(o => o.value).join(', ');
+    });
+  }
+
+  const searchSkillsInput = document.getElementById('studentSearchSkills');
+  if (searchSkillsInput) {
+    const searchChoices = new Choices(searchSkillsInput, {
+      ...choicesOptions,
+      placeholderValue: 'Filter by skills'
+    });
+    
+    // Pre-select if there are existing skills in query
+    const existingSkillsStr = "{{ query.skills | default('') }}";
+    if (existingSkillsStr.trim()) {
+      const skillsToSelect = existingSkillsStr.split(',').map(s => s.trim()).filter(Boolean);
+      // Resolve names → numeric IDs (Choices values are numeric strings)
+      const resolved = skillsToSelect.map(token => {
+        if (/^\d+$/.test(token)) return token;
+        const tl = token.toLowerCase();
+        // 1. exact match
+        const exact = STANDARD_SKILLS.find(s => s.label.toLowerCase() === tl);
+        if (exact) return exact.value;
+        // 2. label starts with token (e.g. "React" → "React.js")
+        const startsWith = STANDARD_SKILLS.find(s => s.label.toLowerCase().startsWith(tl));
+        if (startsWith) return startsWith.value;
+        return token;
+      });
+      searchChoices.setChoiceByValue(resolved);
+    }
+    
+    // Note: We intentionally do NOT listen to 'change' here anymore.
+    // The user must click the search button next to the input to apply multiple skills.
+  }
+
+  const searchBranchInput = document.getElementById('studentSearchBranch');
+  if (searchBranchInput) {
+    const branchChoices = new Choices(searchBranchInput, {
+      removeItemButton: true,
+      searchEnabled: false,
+      placeholderValue: 'Filter by branch',
+      itemSelectText: ''
+    });
+    
+    // Pre-select if there are existing branches in query
+    const existingBranchStr = "{{ query.branch | default('') }}";
+    if (existingBranchStr.trim()) {
+      const branchesToSelect = existingBranchStr.split(',').map(b => b.trim()).filter(Boolean);
+      branchChoices.setChoiceByValue(branchesToSelect);
+    }
+  }
+
+  // Dynamic search with debounce (AJAX)
+  let searchTimeout = null;
+  const searchForm = document.querySelector('form');
+  const searchInputs = document.querySelectorAll('#studentSearchQ');
+  const searchSelects = document.querySelectorAll('select[name="branch"]');
+  
+  window.performSearch = async function() {
+    const url = new URL(window.location.href);
+    const formData = new FormData(searchForm);
+    
+    // Clear all existing parameters to rebuild cleanly from the form
+    url.search = '';
+    
+    for (const [key, value] of formData.entries()) {
+      if (key !== 'skills' && key !== 'branch' && value) {
+        url.searchParams.append(key, value);
+      }
+    }
+    
+    // Explicitly add skills since FormData might ignore hidden select
+    const skillsSelect = document.getElementById('studentSearchSkills');
+    if (skillsSelect && skillsSelect.selectedOptions.length > 0) {
+      Array.from(skillsSelect.selectedOptions).forEach(opt => {
+        url.searchParams.append('skills', opt.value);
+      });
+    }
+
+    // Explicitly add branch
+    const branchSelect = document.getElementById('studentSearchBranch');
+    if (branchSelect && branchSelect.selectedOptions.length > 0) {
+      Array.from(branchSelect.selectedOptions).forEach(opt => {
+        url.searchParams.append('branch', opt.value);
+      });
+    }
+
+    // ── Pick up profile filter values without reloading ─────────────────
+    const sortSel = document.getElementById('pf_sort');
+    if (sortSel && sortSel.value) url.searchParams.set('sort', sortSel.value);
+
+    const pfCheckboxes = document.querySelectorAll('#profileFilterForm input[type="checkbox"]');
+    pfCheckboxes.forEach(cb => {
+      if (cb.checked) url.searchParams.set(cb.name, cb.value);
+    });
+
+    // minLiveProjects spinner — only send when the checkbox is ticked
+    const liveProjCb = document.getElementById('pf_liveProj');
+    const minLiveSpin = document.getElementById('pf_minLiveProjects');
+    if (liveProjCb && liveProjCb.checked && minLiveSpin && minLiveSpin.value) {
+      url.searchParams.set('minLiveProjects', minLiveSpin.value);
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Show loading state (optional)
+    const tableCard = document.getElementById('studentTableCard');
+    if (tableCard) tableCard.style.opacity = '0.6';
+
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      const html = await response.text();
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Update KPI Cards
+      const newKpi = doc.getElementById('kpiCardsContainer');
+      const oldKpi = document.getElementById('kpiCardsContainer');
+      if (newKpi && oldKpi) oldKpi.innerHTML = newKpi.innerHTML;
+      
+      // Update Progress Bar
+      const newProgress = doc.getElementById('placementProgressBarContainer');
+      const oldProgress = document.getElementById('placementProgressBarContainer');
+      if (newProgress && oldProgress) oldProgress.innerHTML = newProgress.innerHTML;
+      
+      // Update Table
+      const newTable = doc.getElementById('studentTableCard');
+      const oldTable = document.getElementById('studentTableCard');
+      if (newTable && oldTable) {
+        oldTable.innerHTML = newTable.innerHTML;
+        oldTable.style.opacity = '1';
+      }
+
+      // Re-attach checkbox event listeners because DOM changed
+      const newCheckboxes = document.querySelectorAll('.student-checkbox');
+      newCheckboxes.forEach(bindStudentCheckbox);
+      const newSelectAll = document.getElementById('selectAllStudents');
+      if (newSelectAll && selectAll) {
+        newSelectAll.checked = selectAll.checked;
+        newSelectAll.indeterminate = selectAll.indeterminate;
+      }
+      // Trigger selection update to sync state
+      updateSelection();
+      
+      // Update URL without reload
+      window.history.replaceState({}, '', url.toString());
+    } catch (err) {
+      console.error('Search failed', err);
+      if (tableCard) tableCard.style.opacity = '1';
+    }
+  }
+
+  searchInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(window.performSearch, 400); // 400ms debounce
+    });
+  });
+
+  searchSelects.forEach(select => {
+    select.addEventListener('change', window.performSearch);
+  });
+
+  // ── Wire profile filters to performSearch (no page reload) ─────────────
+  const pfSort = document.getElementById('pf_sort');
+  if (pfSort) pfSort.addEventListener('change', window.performSearch);
+
+  document.querySelectorAll('#profileFilterForm input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', window.performSearch);
+  });
+
+  // Re-run search when the minLiveProjects spinner value changes (only if checkbox is ticked)
+  const minLiveSpinEl = document.getElementById('pf_minLiveProjects');
+  if (minLiveSpinEl) {
+    let spinnerTimeout = null;
+    minLiveSpinEl.addEventListener('input', () => {
+      const liveCb = document.getElementById('pf_liveProj');
+      if (!liveCb || !liveCb.checked) return; // only search if filter is active
+      clearTimeout(spinnerTimeout);
+      spinnerTimeout = setTimeout(window.performSearch, 500);
+    });
+    minLiveSpinEl.addEventListener('change', () => {
+      const liveCb = document.getElementById('pf_liveProj');
+      if (liveCb && liveCb.checked) window.performSearch();
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  updateSelection();
+});
+
+async function createStudentLogin(studentId, btn) {
+  const originalHtml = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  }
+
+  try {
+    const res = await fetch('/admin/student-logins/' + encodeURIComponent(studentId) + '/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '{{ csrfToken }}'
+      },
+      body: JSON.stringify({ _csrf: '{{ csrfToken }}' })
+    });
+
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (!res.ok || !data.success) {
+      showLoginToast(data.message || ('Failed (HTTP ' + res.status + ')'), 'danger');
+      return;
+    }
+
+    if (data.emailSent) {
+      // Email sent — just show a clean success message, no credentials exposed
+      showLoginToast('Login created. Credentials emailed to ' + data.email + '.', 'success');
+      setTimeout(() => window.location.reload(), 1800);
+    } else {
+      // Email failed — show credentials in a modal so admin can copy and share manually
+      showCredentialsModal({
+        username: data.username,
+        tempPassword: data.tempPassword,
+        loginUrl: data.loginUrl || (window.location.origin + '/login/'),
+        mailError: data.mailError,
+      });
+    }
+  } catch (e) {
+    showLoginToast('Network error while creating login.', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+}
+
+function showLoginToast(message, type) {
+  // Reuse the existing toast infrastructure or fall back to a temp banner
+  const existing = document.getElementById('loginActionToast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'loginActionToast';
+  toast.className = 'position-fixed top-0 end-0 m-3 alert alert-' + type + ' shadow rounded-4 border-0 d-flex align-items-center gap-2';
+  toast.style.cssText = 'z-index:9999;max-width:360px;animation:fadeIn .2s ease;';
+  toast.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle') + '"></i>' +
+    '<span class="small fw-semibold">' + message + '</span>';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function showCredentialsModal({ username, tempPassword, loginUrl, mailError }) {
+  const existing = document.getElementById('credentialsModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'credentialsModal';
+  modal.innerHTML = `
+    <div class="modal fade" id="credentialsModalInner" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+          <div class="modal-header bg-warning text-dark p-4 border-0">
+            <div>
+              <h5 class="modal-title fw-bold mb-1"><i class="fas fa-exclamation-triangle me-2"></i>Email Not Sent — Share Manually</h5>
+              <p class="mb-0 small opacity-75">${mailError ? 'Reason: ' + mailError : 'SMTP is not configured. Copy the credentials below and share them with the student.'}</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-light border rounded-3 font-monospace small mb-3">
+              <div class="mb-2"><strong>Login URL:</strong><br><a href="${loginUrl}" target="_blank">${loginUrl}</a></div>
+              <div class="mb-2"><strong>Username:</strong> ${username}</div>
+              <div><strong>Temporary Password:</strong> <span id="credTempPw">${tempPassword}</span></div>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary rounded-3" onclick="
+              navigator.clipboard.writeText('Login: ${loginUrl}\\nUsername: ${username}\\nPassword: ${tempPassword}');
+              this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy Credentials',2000);
+            "><i class="fas fa-copy me-1"></i>Copy Credentials</button>
+            <p class="text-muted small mt-3 mb-0">
+              <i class="fas fa-info-circle me-1"></i>
+              Configure SMTP in <a href="/settings/">Settings</a> so credentials are emailed automatically next time.
+            </p>
+          </div>
+          <div class="modal-footer border-0 bg-light p-3">
+            <button type="button" class="btn btn-primary rounded-3 px-4" data-bs-dismiss="modal" onclick="window.location.reload()">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const bsModal = new bootstrap.Modal(document.getElementById('credentialsModalInner'));
+  bsModal.show();
+  document.getElementById('credentialsModalInner').addEventListener('hidden.bs.modal', () => {
+    modal.remove();
+    window.location.reload();
+  });
+}
+
+// ── Per-row login button (delegated — works after AJAX table rebuild) ────────
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.single-login-btn');
+  if (!btn) return;
+  const studentId = btn.dataset.studentId;
+  if (!studentId) return;
+  createStudentLogin(studentId, btn);
+});
+</script>
+{% endblock %}

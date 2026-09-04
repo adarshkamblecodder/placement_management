@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% block title %}Corporate Recruiters — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+  {# ── Header ── #}
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h2 class="fw-bold mb-0" style="color: var(--text-main); font-weight: 700; letter-spacing: -0.02em;">
+          Corporate Recruiters &amp; CRM
+        </h2>
+        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 small">
+          {{ object_list.length }} Organizations
+        </span>
+      </div>
+      <p class="text-muted small mb-0">
+        Manage corporate relations, hiring tiers, recruitment drives, and historical campus visits
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="/companies/add/" class="btn btn-primary px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2">
+        <i class="fas fa-plus"></i>
+        <span>Add Recruiter</span>
+      </a>
+    </div>
+  </div>
+
+  {# ── Flash Messages ── #}
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.type or msg.tags }} alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+    <i class="fas fa-{% if (msg.type or msg.tags) == 'success' %}check-circle text-success{% elif (msg.type or msg.tags) == 'danger' %}exclamation-circle text-danger{% else %}info-circle text-primary{% endif %} me-2"></i>
+    {{ msg.text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+
+  {# ── Search Bar ── #}
+  <div class="card p-3 mb-4 shadow-sm border-0 rounded-4" style="background: var(--card-bg);">
+    <div class="input-group">
+      <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
+      <input type="text" id="companySearchQ" class="form-control border-0 bg-light"
+             placeholder="Search recruiters by name, industry, domain... (live)" autocomplete="off"
+             value="{{ query.q | default('') }}">
+      <button type="button" id="companySearchClear" class="btn btn-light border-0 text-muted d-none">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="mt-2 text-muted small" id="companySearchStatus" style="min-height:1.2em;"></div>
+  </div>
+
+  {# ── Companies Table Card ── #}
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="background: var(--card-bg);" id="companiesTableCard">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="companiesTable">
+        <thead style="background: var(--table-head-bg); border-bottom: 1px solid var(--border-color);">
+          <tr class="text-muted small text-uppercase" style="letter-spacing: 0.05em; font-size: 0.75rem;">
+            <th style="width: 45px;" class="ps-4">#</th>
+            <th>Company Name</th>
+            <th>Industry / Domain</th>
+            <th>Tier &amp; Rating</th>
+            <th>Website</th>
+            <th>Active Drives</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="companiesTbody" style="border-top: none;">
+          {% for obj in object_list %}
+          <tr style="transition: background-color 0.2s;">
+            <td class="text-muted small ps-4">{{ loop.index }}</td>
+            <td>
+              <a href="/companies/{{ obj.id }}/" class="fw-bold text-decoration-none d-flex align-items-center gap-2" style="color: var(--text-main);">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 38px; height: 38px;">
+                  <i class="fas fa-building small"></i>
+                </div>
+                <div>
+                  <span class="d-block">{{ obj.name }}</span>
+                  <span class="text-muted small">{{ obj.hr_contact | default('No HR email') }}</span>
+                </div>
+              </a>
+            </td>
+            <td>
+              <span class="badge rounded-pill bg-light text-dark border px-3 py-1">
+                {{ obj.industry or 'General Tech' }}
+              </span>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 fw-bold">
+                  {{ obj.tier | default('Tier 1') }}
+                </span>
+                <span class="small text-muted fw-semibold">
+                  <i class="fas fa-star text-warning me-1"></i>{{ obj.rating | default('4.5') }}
+                </span>
+              </div>
+            </td>
+            <td>
+              {% if obj.website %}
+              <a href="{{ obj.website }}" target="_blank" class="btn btn-sm btn-light rounded-pill px-3 text-primary text-decoration-none">
+                <i class="fas fa-external-link-alt me-1"></i>Portal
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fw-bold">
+                <i class="fas fa-briefcase me-1"></i>{{ obj.drive_count or 0 }} Drives
+              </span>
+            </td>
+            <td class="text-end pe-4">
+              <div class="btn-group shadow-sm rounded-3 overflow-hidden">
+                <a href="/companies/{{ obj.id }}/" class="btn btn-sm btn-light" title="View Details &amp; Placement Drives">
+                  <i class="fas fa-eye text-primary"></i>
+                </a>
+                <a href="/companies/{{ obj.id }}/edit/" class="btn btn-sm btn-light" title="Edit Recruiter">
+                  <i class="fas fa-edit text-info"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr id="emptyRow">
+            <td colspan="7" class="text-center py-5">
+              <div class="text-muted opacity-50 mb-3">
+                <i class="fas fa-building-circle-xmark fa-3x"></i>
+              </div>
+              <h5 class="fw-bold" style="color: var(--text-main);">No Recruiter Companies Found</h5>
+              <p class="text-muted small mb-3">Add partner companies to schedule placement drives.</p>
+              <a href="/companies/add/" class="btn btn-sm btn-primary rounded-pill px-4">Register First Company</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="card-footer bg-white border-0 p-3 d-flex justify-content-between align-items-center" style="background: var(--card-bg) !important;">
+      <span class="text-muted small">
+        Showing <strong id="companiesCount">{{ object_list.length }}</strong> organization(s)
+      </span>
+      <a href="#top" class="text-decoration-none small text-muted"><i class="fas fa-arrow-up me-1"></i>Back to top</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const searchInput  = document.getElementById('companySearchQ');
+  const clearBtn     = document.getElementById('companySearchClear');
+  const tbody        = document.getElementById('companiesTbody');
+  const countEl      = document.getElementById('companiesCount');
+  const statusEl     = document.getElementById('companySearchStatus');
+  let debounceTimer  = null;
+
+  function rowHtml(c, idx) {
+    const industry = c.industry || 'General Tech';
+    const hrContact = c.hr_contact || 'No HR email';
+    const tier = c.tier || 'Tier 1';
+    const rating = c.rating || '4.5';
+    const driveCount = c.drive_count || 0;
+    const websiteBtn = c.website
+      ? `<a href="${c.website}" target="_blank" class="btn btn-sm btn-light rounded-pill px-3 text-primary text-decoration-none"><i class="fas fa-external-link-alt me-1"></i>Portal</a>`
+      : `<span class="text-muted small">—</span>`;
+    return `<tr style="transition: background-color 0.2s;">
+      <td class="text-muted small ps-4">${idx}</td>
+      <td>
+        <a href="/companies/${c.id}/" class="fw-bold text-decoration-none d-flex align-items-center gap-2" style="color: var(--text-main);">
+          <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width:38px;height:38px;">
+            <i class="fas fa-building small"></i>
+          </div>
+          <div>
+            <span class="d-block">${escHtml(c.name)}</span>
+            <span class="text-muted small">${escHtml(hrContact)}</span>
+          </div>
+        </a>
+      </td>
+      <td><span class="badge rounded-pill bg-light text-dark border px-3 py-1">${escHtml(industry)}</span></td>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 fw-bold">${escHtml(tier)}</span>
+          <span class="small text-muted fw-semibold"><i class="fas fa-star text-warning me-1"></i>${escHtml(String(rating))}</span>
+        </div>
+      </td>
+      <td>${websiteBtn}</td>
+      <td>
+        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fw-bold">
+          <i class="fas fa-briefcase me-1"></i>${driveCount} Drives
+        </span>
+      </td>
+      <td class="text-end pe-4">
+        <div class="btn-group shadow-sm rounded-3 overflow-hidden">
+          <a href="/companies/${c.id}/" class="btn btn-sm btn-light" title="View Details"><i class="fas fa-eye text-primary"></i></a>
+          <a href="/companies/${c.id}/edit/" class="btn btn-sm btn-light" title="Edit Recruiter"><i class="fas fa-edit text-info"></i></a>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  function emptyRowHtml(msg) {
+    return `<tr><td colspan="7" class="text-center py-5">
+      <div class="text-muted opacity-50 mb-3"><i class="fas fa-building-circle-xmark fa-3x"></i></div>
+      <h5 class="fw-bold" style="color:var(--text-main);">${msg}</h5>
+    </td></tr>`;
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function doSearch(q) {
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Searching...';
+    try {
+      const url = '/companies/' + (q ? '?q=' + encodeURIComponent(q) : '');
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+      if (!res.ok) {
+        // If redirected to login, session expired — reload to login page
+        if (res.url && res.url.includes('/login/')) {
+          window.location.href = '/login/';
+          return;
+        }
+        throw new Error('HTTP ' + res.status);
+      }
+      const data = await res.json();
+      const list = data.companies || [];
+
+      if (list.length === 0) {
+        tbody.innerHTML = emptyRowHtml('No companies match "' + escHtml(q) + '"');
+      } else {
+        tbody.innerHTML = list.map((c, i) => rowHtml(c, i + 1)).join('');
+      }
+      if (countEl) countEl.textContent = list.length;
+      statusEl.textContent = q ? `${list.length} result(s) for "${q}"` : '';
+      // update browser URL without reload
+      const newUrl = q ? '/companies/?q=' + encodeURIComponent(q) : '/companies/';
+      window.history.replaceState({}, '', newUrl);
+    } catch (e) {
+      statusEl.innerHTML = '<span class="text-danger small"><i class="fas fa-exclamation-circle me-1"></i>Search failed. Try again.</span>';
+    }
+  }
+
+  searchInput.addEventListener('input', function () {
+    const q = this.value.trim();
+    clearBtn.classList.toggle('d-none', !q);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => doSearch(q), 300);
+  });
+
+  clearBtn.addEventListener('click', function () {
+    searchInput.value = '';
+    clearBtn.classList.add('d-none');
+    statusEl.textContent = '';
+    doSearch('');
+  });
+
+  // Show clear button if there's a pre-filled value on page load
+  if (searchInput.value.trim()) {
+    clearBtn.classList.remove('d-none');
+  }
+})();
+</script>
+
+{% endblock %}

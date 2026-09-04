@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+{# ── Header / Breadcrumbs ── #}
+<div class="d-flex align-items-center mb-4">
+    <a href="/companies/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+    <div>
+        <h2 class="fw-bold mb-0" style="color:#1e293b;">{{ company.name }}</h2>
+        <div class="text-muted small mt-1">
+            <span class="me-3"><i class="fas fa-industry me-1"></i> {{ company.industry | default('Industry not set') }}</span>
+            {% if company.website %}
+            <span class="me-3"><a href="{{ company.website }}" target="_blank" class="text-decoration-none"><i class="fas fa-globe me-1"></i> Website</a></span>
+            {% endif %}
+            <span><i class="fas fa-envelope me-1"></i> {{ company.hr_contact | default('HR Contact not set') }}</span>
+        </div>
+    </div>
+</div>
+
+{# ── Jobs / Recruitment Drives Section ── #}
+<div class="d-flex justify-content-between align-items-end mb-3 mt-5">
+    <h4 class="fw-bold mb-0" style="color:#334155;">Recruitment Drives</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJobModal">
+        <i class="fas fa-plus me-2"></i>Create Drive
+    </button>
+</div>
+
+<div class="row g-4">
+    {% for job in jobs %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-0" style="border-radius:12px; transition: transform 0.2s;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title fw-bold text-dark mb-0">{{ job.title }}</h5>
+                    {% if job.status == 'Upcoming' %}
+                        <span class="badge bg-warning text-dark">Upcoming</span>
+                    {% elif job.status == 'Ongoing' %}
+                        <span class="badge bg-primary">Ongoing</span>
+                    {% elif job.status == 'Completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% endif %}
+                </div>
+                
+                <h6 class="text-success fw-bold mb-3">{{ job.package_lpa | default('TBD') }} LPA</h6>
+                
+                <div class="small text-muted mb-2">
+                    <i class="far fa-calendar-alt me-1"></i> 
+                    {% if job.interview_start_date %}
+                        {{ job.interview_start_date }} 
+                        {% if job.interview_end_date %}to {{ job.interview_end_date }}{% endif %}
+                    {% else %}
+                        Dates pending
+                    {% endif %}
+                </div>
+                
+                <p class="card-text text-secondary small text-truncate" style="max-height: 40px; overflow:hidden;">
+                    {{ job.description | default('No description provided.') }}
+                </p>
+            </div>
+            <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+                <a href="/jobs/{{ job.id }}/" class="btn btn-light w-100 fw-semibold text-primary border">
+                    Manage Drive <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <i class="fas fa-briefcase fa-3x text-muted mb-3 opacity-50"></i>
+        <h5 class="text-muted fw-semibold">No active recruitment drives</h5>
+        <p class="text-muted small">Create a drive to start shortlisting students and tracking applications.</p>
+        <button class="btn btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#addJobModal">Create First Drive</button>
+    </div>
+    {% endfor %}
+</div>
+
+{# ── Add Job Modal ── #}
+<div class="modal fade" id="addJobModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle text-primary me-2"></i>Create Recruitment Drive</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/companies/{{ company.id }}/jobs/add/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Job Title / Role <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Software Engineer Intern" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Package (LPA)</label>
+                            <input type="number" name="package_lpa" class="form-control" placeholder="e.g. 10.50" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Start Date</label>
+                            <input type="date" name="interview_start_date" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">End/Expected Date</label>
+                            <input type="date" name="interview_end_date" class="form-control">
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Upcoming">Upcoming</option>
+                                <option value="Ongoing">Ongoing</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Job Description / Eligibility Criteria</label>
+                            <textarea name="description" class="form-control" rows="4" placeholder="Enter skills required, branch limitations, and other details..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Create Drive</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

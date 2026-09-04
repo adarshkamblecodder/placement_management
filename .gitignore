@@ -1,0 +1,20 @@
+node_modules/
+.env
+db.sqlite3
+db.sqlite3.bak
+media/
+staticfiles/
+*.log
+.DS_Store
+Thumbs.db
+
+# Scratch / debug files (safe to exclude from repo)
+fix_templates.js
+scan_templates.js
+scratch_output.html
+test_app.js
+test_db.js
+test_render.js
+
+# Windows RAM tool (unrelated to the project)
+RAMMap/

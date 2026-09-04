@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% block title %}My Profile — {{ student.name | default('Student') }} — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{# ── Flash messages ── #}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+{# ── Page header ── #}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/student/profile/" class="btn btn-light border">
+    <i class="fas fa-arrow-left"></i>
+  </a>
+  <div>
+    <h3 class="fw-bold mb-0" style="color:var(--text-main);">
+      <i class="fas fa-user-edit text-primary me-2"></i>My Profile
+    </h3>
+    <p class="text-muted small mb-0">
+      Update your personal, academic, and placement details.
+      <span class="ms-2 badge {% if is_profile_complete %}bg-success{% else %}bg-warning text-dark{% endif %}">
+        {% if is_profile_complete %}Complete{% else %}{{ completion }}% complete{% endif %}
+      </span>
+    </p>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── LEFT: Quick summary card ── #}
+  <div class="col-lg-3">
+    <div class="card border-0 shadow-sm mb-4 text-center">
+      <div class="card-body p-4">
+        {% if student.profile_photo %}
+        <img src="{{ student.profile_photo.url }}" class="rounded-circle mx-auto mb-3"
+             style="width:100px;height:100px;object-fit:cover;border:3px solid var(--primary);">
+        {% else %}
+        <div class="rounded-circle mx-auto mb-3 bg-light d-flex align-items-center justify-content-center text-muted border"
+             style="width:100px;height:100px;">
+          <i class="fas fa-user fa-2x"></i>
+        </div>
+        {% endif %}
+        <h5 class="fw-bold mb-1">{{ student.name | default('—') }}</h5>
+        <div class="text-muted small mb-2 font-monospace">{{ student.student_id }}</div>
+        {% if student.branch %}
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-1">{{ student.branch }}</span>
+        {% endif %}
+        {% if student.year %}
+        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">Year {{ student.year }}</span>
+        {% endif %}
+        <div class="mt-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-muted">Completion</span>
+            <span class="fw-bold">{{ completion }}%</span>
+          </div>
+          <div class="progress" style="height:6px;">
+            <div class="progress-bar {% if completion >= 90 %}bg-success{% elif completion >= 60 %}bg-info{% elif completion >= 30 %}bg-warning{% else %}bg-danger{% endif %}"
+                 role="progressbar" style="width:{{ completion }}%;"
+                 aria-valuenow="{{ completion }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── RIGHT: Edit form ── #}
+  <div class="col-lg-9">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h5 class="fw-bold border-bottom pb-3 mb-4">
+          <i class="fas fa-user-edit me-2 text-primary"></i>Edit Profile Details
+        </h5>
+
+        <form method="post" action="/student/my-profile/" enctype="multipart/form-data">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+          {# ── Personal Details ── #}
+          <h6 class="fw-semibold text-secondary mb-3">Personal Details</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Student ID</label>
+              <input type="text" class="form-control" value="{{ student.student_id }}" disabled>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control"
+                     value="{{ student.name | default('') }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Gender</label>
+              <select name="gender" class="form-select">
+                <option value="">-- Select --</option>
+                <option value="M" {% if student.gender == 'M' or student.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option value="F" {% if student.gender == 'F' or student.gender == 'Female' %}selected{% endif %}>Female</option>
+                <option value="O" {% if student.gender == 'O' or student.gender == 'Other' %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Date of Birth <span class="text-danger">*</span></label>
+              <input type="date" name="date_of_birth" class="form-control"
+                     value="{{ student.date_of_birth | default('') }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Email ID <span class="text-danger">*</span></label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ student.email | default('') }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Phone Number</label>
+              <input type="text" name="phone_number" class="form-control"
+                     value="{{ student.phone_number | default('') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Profile Photo</label>
+              {% if student.profile_photo %}
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <img src="{{ student.profile_photo.url }}" class="rounded-circle"
+                     style="width:36px;height:36px;object-fit:cover;border:2px solid var(--primary);">
+                <span class="text-muted small">Current photo</span>
+              </div>
+              {% endif %}
+              <input type="file" name="profile_photo" class="form-control" accept="image/*">
+              <div class="form-text">Leave blank to keep your existing photo.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Address</label>
+              <textarea name="address" class="form-control" rows="2">{{ student.address | default('') }}</textarea>
+            </div>
+          </div>
+
+          {# ── Academic Details ── #}
+          <h6 class="fw-semibold text-secondary mb-3">Academic Details</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Branch</label>
+              <input type="text" name="branch" class="form-control"
+                     value="{{ student.branch | default('') }}" placeholder="e.g. CS, AIML">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Current Year</label>
+              <input type="text" name="year" class="form-control"
+                     value="{{ student.year | default('') }}" placeholder="e.g. 3">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">CGPA</label>
+              <input type="number" step="0.01" min="0" max="10" name="cgpa" class="form-control"
+                     value="{{ student.cgpa | default('') }}" placeholder="e.g. 8.5">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">10th Percentage (%)</label>
+              <input type="number" step="0.01" min="0" max="100" name="tenthPercentage"
+                     class="form-control" value="{{ profile.tenthPercentage | default('') }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">12th / Diploma (%)</label>
+              <input type="number" step="0.01" min="0" max="100" name="twelfthPercentage"
+                     class="form-control" value="{{ profile.twelfthPercentage | default('') }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Active Backlogs</label>
+              <input type="number" min="0" name="backlogs" class="form-control"
+                     value="{{ student.backlogs | default(profile.backlogs | default(0)) }}">
+            </div>
+          </div>
+
+          {# ── Skills, Certifications & Projects ── #}
+          <h6 class="fw-semibold text-secondary mb-3">Skills, Certifications &amp; Projects</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Skills</label>
+              <select id="studentProfileSkills" class="form-control" multiple></select>
+              <input type="hidden" name="skills" id="studentProfileSkillsHidden"
+                     value="{{ student.skills | default('') }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Certifications (Comma-separated)</label>
+              <textarea name="certifications" rows="2" class="form-control"
+                        placeholder="e.g. AWS Certified Developer, Oracle Java SE">{{ student.certifications | default(profile.certifications | default('')) }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Projects</label>
+              <div class="p-3 border rounded bg-light">
+                <div class="small text-muted mb-2">
+                  Manage your Live and Academic project records in the dedicated Projects section.
+                </div>
+                <a href="/student/projects/" class="btn btn-sm btn-outline-primary me-2">
+                  <i class="fas fa-diagram-project me-1"></i>View / Add Projects
+                </a>
+                <span class="text-muted small">Project details including type, tech stack, and links are managed there.</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Internship Experience</label>
+              <textarea name="internshipExperience" rows="2" class="form-control"
+                        placeholder="Roles, companies, duration...">{{ profile.internshipExperience | default('') }}</textarea>
+              <div class="form-text">
+                For detailed internship records and certificates, use
+                <a href="/student/internships/">Internships</a>.
+              </div>
+            </div>
+          </div>
+
+          {# ── Placement Preferences & Links ── #}
+          <h6 class="fw-semibold text-secondary mb-3">Placement Preferences &amp; Links</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Bio / About Me</label>
+              <textarea name="bio" rows="3" class="form-control"
+                        placeholder="Brief introduction about yourself, your interests, and career goals...">{{ profile.bio | default('') }}</textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Preferred Job Role</label>
+              <input type="text" name="preferredRole" class="form-control"
+                     value="{{ profile.preferredRole | default('') }}"
+                     placeholder="e.g. Software Development Engineer">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Preferred Company Type</label>
+              <input type="text" name="preferredCompanyType" class="form-control"
+                     value="{{ profile.preferredCompanyType | default('') }}"
+                     placeholder="e.g. Product / Tier-1 / Startup">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">LinkedIn Profile</label>
+              <input type="url" name="linkedin" class="form-control"
+                     value="{{ student.linkedin | default('') }}"
+                     placeholder="https://linkedin.com/in/username">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">GitHub Profile</label>
+              <input type="url" name="github" class="form-control"
+                     value="{{ student.github | default('') }}"
+                     placeholder="https://github.com/username">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Portfolio URL</label>
+              <input type="url" name="portfolioUrl" class="form-control"
+                     value="{{ profile.portfolioUrl | default('') }}"
+                     placeholder="https://myportfolio.com">
+            </div>
+          </div>
+
+          <div class="text-end">
+            <a href="/student/profile/" class="btn btn-light border me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="fas fa-save me-2"></i>Save Profile Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {# ── Resume section ── #}
+    <div class="card border-0 shadow-sm mb-4" id="resume-section">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="fw-bold mb-0">
+          <i class="fas fa-file-alt me-2 text-primary"></i>Resume
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        {% if activeResume %}
+        {# ── Active resume info ── #}
+        <div class="border rounded p-3 mb-3 bg-light">
+          <div class="fw-semibold text-truncate mb-1" title="{{ activeResume.originalFilename }}">
+            <i class="fas fa-file-pdf text-danger me-1"></i>{{ activeResume.originalFilename }}
+          </div>
+          <div class="text-muted small">
+            {{ (activeResume.sizeBytes / 1024) | round(1) }} KB &bull; Uploaded {{ activeResume.createdAt }}
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+          <a class="btn btn-sm btn-outline-primary"
+             href="/student/profile/resume/{{ activeResume.id }}/preview" target="_blank">
+            <i class="fas fa-eye me-1"></i>View
+          </a>
+          <a class="btn btn-sm btn-outline-secondary"
+             href="/student/profile/resume/{{ activeResume.id }}/download">
+            <i class="fas fa-download me-1"></i>Download
+          </a>
+          <form method="post" action="/student/profile/resume/{{ activeResume.id }}/delete"
+                onsubmit="return confirm('Delete this resume?');" class="d-inline">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="fas fa-trash me-1"></i>Delete
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-3">No resume uploaded yet.</p>
+        {% endif %}
+
+        {# ── Upload / Replace form ── #}
+        <form method="post" action="/student/profile/resume/upload"
+              enctype="multipart/form-data" class="border-top pt-3">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+          <label class="form-label fw-semibold small mb-2">
+            {% if activeResume %}Replace Resume{% else %}Upload Resume{% endif %}
+            <span class="text-muted fw-normal">(PDF / DOC / DOCX, max 5 MB)</span>
+          </label>
+          <div class="input-group">
+            <input type="file" name="resume" accept=".pdf,.doc,.docx,application/pdf"
+                   class="form-control" required>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-upload me-1"></i>Upload
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+  </div>{# /col-lg-9 #}
+</div>{# /row #}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const skillsInput = document.getElementById('studentProfileSkills');
+  if (skillsInput) {
+    const choices = new Choices(skillsInput, {
+      removeItemButton: true,
+      choices: typeof STANDARD_SKILLS !== 'undefined' ? STANDARD_SKILLS : [],
+      duplicateItemsAllowed: false,
+      paste: false,
+      searchEnabled: true,
+      searchPlaceholderValue: 'Search skills...',
+      placeholderValue: 'Select skills',
+      shouldSort: false,
+      itemSelectText: ''
+    });
+
+    const hiddenInput = document.getElementById('studentProfileSkillsHidden');
+    if (hiddenInput && hiddenInput.value) {
+      choices.setChoiceByValue(hiddenInput.value.split(',').map(s => s.trim()).filter(Boolean));
+    }
+
+    skillsInput.addEventListener('change', () => {
+      hiddenInput.value = Array.from(skillsInput.selectedOptions).map(o => o.value).join(', ');
+    });
+  }
+});
+</script>
+{% endblock %}

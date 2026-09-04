@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4 fade-in">
+  <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 mb-4" style="background: var(--card-bg);">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 54px; height: 54px;">
+        <i class="fas fa-shield-halved fa-2x"></i>
+      </div>
+      <div>
+        <h2 class="fw-bold mb-1" style="color: var(--text-main);">Regulatory Compliance &amp; Registration Disclosures</h2>
+        <p class="text-muted small mb-0">Statutory disclosures mandated by SEBI (RIA), AMFI (Mutual Fund Distribution), and IRDAI</p>
+      </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(14, 165, 233, 0.08);">
+          <span class="badge bg-primary text-white mb-2 align-self-start">SEBI RIA</span>
+          <h5 class="fw-bold">SEBI Registered Advisor</h5>
+          <p class="text-muted small mb-2">Registration No: <strong>{{ sebiRegNo }}</strong></p>
+          <p class="small text-muted mb-0">Regulated under Securities and Exchange Board of India (Investment Advisers) Regulations, 2013.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(16, 185, 129, 0.08);">
+          <span class="badge bg-success text-white mb-2 align-self-start">AMFI Registered</span>
+          <h5 class="fw-bold">AMFI Mutual Fund Distributor</h5>
+          <p class="text-muted small mb-2">ARN Code: <strong>{{ amfiArn }}</strong></p>
+          <p class="small text-muted mb-0">Registered with the Association of Mutual Funds in India for direct and regular scheme transactions.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(245, 158, 11, 0.08);">
+          <span class="badge bg-warning text-dark mb-2 align-self-start">IRDAI Corporate Agent</span>
+          <h5 class="fw-bold">IRDAI Insurance Advisory</h5>
+          <p class="text-muted small mb-2">License No: <strong>{{ irdaiCode }}</strong></p>
+          <p class="small text-muted mb-0">Authorized by the Insurance Regulatory and Development Authority of India for term and health protection.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-top pt-4">
+      <h5 class="fw-bold mb-3" style="color: var(--text-main);">Investor Grievance Redressal Matrix</h5>
+      <p class="text-muted small">
+        Investors may lodge grievances via our dedicated compliance desk at <code>compliance@wealthadvisory.com</code> or directly on the SEBI SCORES portal (<a href="https://scores.gov.in" target="_blank" class="text-primary">scores.gov.in</a>).
+      </p>
+      <div class="alert alert-warning small rounded-3 border-0">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Standard Disclaimer:</strong> Mutual fund investments are subject to market risks. Read all scheme-related documents carefully before investing. Past performance is not indicative of future returns.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

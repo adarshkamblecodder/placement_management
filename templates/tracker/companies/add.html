@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex align-items-center mb-4">
+    <a href="/companies/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+    <div>
+        <h2 class="fw-bold mb-0" style="color:#1e293b;">Add Company</h2>
+        <p class="text-muted small mb-0">Create a new company and optionally attach placement drives</p>
+    </div>
+</div>
+
+{% if errors and errors.length %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</strong>
+    <ul class="mb-0 mt-2">
+        {% for e in errors %}
+        <li>{{ e }}</li>
+        {% endfor %}
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<form method="post" action="/companies/add/" id="addCompanyForm">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+    <!-- ── Company Details ── -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+            <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-building me-2"></i>Company Information</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Google India"
+                           value="{{ company.name }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Industry</label>
+                    <input type="text" name="industry" class="form-control" placeholder="e.g. Technology"
+                           value="{{ company.industry }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Website</label>
+                    <input type="url" name="website" class="form-control" placeholder="https://example.com"
+                           value="{{ company.website }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">HR Contact / Email</label>
+                    <input type="text" name="hr_contact" class="form-control" placeholder="hr@example.com"
+                           value="{{ company.hr_contact }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Placement Drives ── -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-briefcase me-2"></i>Placement Drives</h5>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="addDriveBtn">
+                <i class="fas fa-plus me-1"></i>Add Drive
+            </button>
+        </div>
+        <div class="card-body p-4" id="drivesContainer">
+            <!-- Drive rows injected by JS -->
+            <div class="text-center text-muted py-3" id="noDrivesMsg">
+                <i class="fas fa-info-circle me-1"></i>
+                No drives yet. Click <strong>+ Add Drive</strong> to attach a placement drive.
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a href="/companies/" class="btn btn-light border px-4">Cancel</a>
+        <button type="submit" class="btn btn-primary px-5">
+            <i class="fas fa-save me-2"></i>Save Company
+        </button>
+    </div>
+</form>
+
+<style>
+.drive-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    background: #f8fafc;
+    position: relative;
+    transition: box-shadow 0.2s;
+}
+.drive-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); }
+.drive-number-badge {
+    background: linear-gradient(135deg, #38bdf8, #0284c7);
+    color: white;
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem;
+}
+.remove-drive-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: #fee2e2; border: none; border-radius: 8px;
+    color: #dc2626; padding: 4px 10px; font-size: .8rem;
+    cursor: pointer; transition: background 0.2s;
+}
+.remove-drive-btn:hover { background: #fca5a5; }
+</style>
+
+<script>
+(function () {
+    let driveIndex = 0;
+    const container = document.getElementById('drivesContainer');
+    const noDrivesMsg = document.getElementById('noDrivesMsg');
+
+    function buildDriveRow(idx) {
+        const today = new Date().toISOString().split('T')[0];
+        return `
+<div class="drive-card" id="driveCard_${idx}">
+  <button type="button" class="remove-drive-btn" onclick="removeDrive(${idx})" title="Remove drive">
+      <i class="fas fa-times me-1"></i>Remove
+  </button>
+  <div class="d-flex align-items-center mb-3">
+      <span class="drive-number-badge me-2">${idx + 1}</span>
+      <strong class="text-slate-700">Placement Drive</strong>
+  </div>
+  <div class="row g-3">
+      <div class="col-md-6">
+          <label class="form-label fw-semibold">Job Role <span class="text-danger">*</span></label>
+          <input type="text" name="drives[${idx}][jobRole]" class="form-control" placeholder="e.g. Software Engineer" required>
+      </div>
+      <div class="col-md-3">
+          <label class="form-label fw-semibold">Package (LPA)</label>
+          <input type="number" name="drives[${idx}][packageLPA]" class="form-control" placeholder="e.g. 12.5" step="0.01" min="0">
+      </div>
+      <div class="col-md-3">
+          <label class="form-label fw-semibold">Openings <span class="text-danger">*</span></label>
+          <input type="number" name="drives[${idx}][numberOfOpenings]" class="form-control" placeholder="e.g. 5" min="1" value="1" required>
+      </div>
+      <div class="col-md-4">
+          <label class="form-label fw-semibold">Interview Date <span class="text-danger">*</span></label>
+          <input type="date" name="drives[${idx}][interviewDate]" class="form-control" min="${today}" required>
+      </div>
+      <div class="col-md-4">
+          <label class="form-label fw-semibold">Min CGPA <span class="text-danger">*</span></label>
+          <input type="number" name="drives[${idx}][minCGPA]" class="form-control" placeholder="e.g. 7.5" step="0.1" min="0" max="10" value="6.0" required>
+      </div>
+      <div class="col-md-4">
+          <label class="form-label fw-semibold">Drive Status</label>
+          <select name="drives[${idx}][driveStatus]" class="form-select">
+              <option value="upcoming" selected>🟡 Upcoming</option>
+              <option value="ongoing">🟢 Ongoing</option>
+              <option value="completed">⚫ Completed</option>
+          </select>
+      </div>
+      <div class="col-12">
+          <label class="form-label fw-semibold">Drive Location <span class="text-danger">*</span></label>
+          <input type="text" name="drives[${idx}][driveLocation]" class="form-control"
+                 placeholder="e.g. D.Y. Patil College of Engineering and Innovation" required>
+      </div>
+      <div class="col-12">
+          <label class="form-label fw-semibold">Eligible Branches</label>
+          <input type="text" name="drives[${idx}][eligibleBranches]" class="form-control"
+                 placeholder="e.g. CSE,IT,ECE (comma-separated)">
+      </div>
+      <div class="col-12">
+          <label class="form-label fw-semibold">Job Description</label>
+          <textarea name="drives[${idx}][jobDescription]" class="form-control" rows="3"
+                    placeholder="Describe roles, responsibilities, skill requirements..."></textarea>
+      </div>
+  </div>
+</div>`;
+    }
+
+    window.removeDrive = function (idx) {
+        const card = document.getElementById('driveCard_' + idx);
+        if (card) card.remove();
+        const remaining = container.querySelectorAll('.drive-card');
+        if (remaining.length === 0) noDrivesMsg.style.display = '';
+    };
+
+    document.getElementById('addDriveBtn').addEventListener('click', function () {
+        noDrivesMsg.style.display = 'none';
+        const div = document.createElement('div');
+        div.innerHTML = buildDriveRow(driveIndex);
+        container.appendChild(div.firstElementChild);
+        driveIndex++;
+    });
+})();
+</script>
+
+{% endblock %}

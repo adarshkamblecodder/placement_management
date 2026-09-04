@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    @media print {
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .sidebar { display: none !important; }
+        .content { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        .no-print { display: none !important; }
+        .print-header { display: block !important; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; }
+        table { width: 100% !important; }
+    }
+    .print-header { display: none; }
+
+    .stat-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 16px; border-radius: 999px;
+        font-size: 0.82rem; font-weight: 600;
+        background: #dcfce7; color: #15803d;
+    }
+    .filter-bar { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 20px 24px; margin-bottom: 24px; }
+    .table thead th { background: #f8fafc; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+    .table tbody tr:hover { background: #f0f9ff; transition: background .15s; }
+    .pkg-badge { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; border-radius: 8px; padding: 3px 12px; font-weight: 700; font-size: 0.85rem; }
+    .branch-chip { background: #ede9fe; color: #6d28d9; border-radius: 6px; padding: 2px 10px; font-size: 0.78rem; font-weight: 600; }
+    .year-chip  { background: #dbeafe; color: #1d4ed8; border-radius: 6px; padding: 2px 10px; font-size: 0.78rem; font-weight: 600; }
+
+    /* Active filter pill */
+    .active-filter { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:99px; font-size:.78rem; font-weight:600; }
+    .af-year   { background:#dbeafe; color:#1d4ed8; }
+    .af-branch { background:#ede9fe; color:#6d28d9; }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <div>
+        <h2 class="fw-bold mb-0" style="color:#1e293b;">Placement Records</h2>
+        <p class="text-muted small mb-0">All placed students &mdash; filter by year or branch</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url('') }}" class="btn btn-primary"><i class="fas fa-trophy me-2"></i>Record Placement</a>
+        <button class="btn btn-dark" onclick="window.print()"><i class="fas fa-file-pdf me-2"></i>Export PDF</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar no-print">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label text-muted fw-bold small">Placement Year</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+                <option value="">All Years</option>
+                {% for y in years %}
+                <option value="{{ y }}" {% if f_year == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted fw-bold small">Branch</label>
+            <select name="branch" class="form-select" onchange="this.form.submit()">
+                <option value="">All Branches</option>
+                {% for b in branches %}
+                <option value="{{ b }}" {% if f_branch == b %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>Filter</button>
+            <a href="{{ url('') }}" class="btn btn-outline-secondary"><i class="fas fa-times"></i></a>
+        </div>
+    </form>
+
+    <!-- Active filter chips -->
+    {% if f_year or f_branch %}
+    <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+        <span class="text-muted small fw-bold">Active:</span>
+        {% if f_year %}<span class="active-filter af-year"><i class="fas fa-calendar-alt"></i> {{ f_year }}</span>{% endif %}
+        {% if f_branch %}<span class="active-filter af-branch"><i class="fas fa-code-branch"></i> {{ f_branch }}</span>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4 no-print">
+    <div class="col-md-4">
+        <div class="card p-3 border-start border-success border-4 shadow-sm">
+            <div class="text-muted small mb-1">Total Placed <span class="text-xs">(filtered)</span></div>
+            <h3 class="fw-bold text-success mb-0">{{ total_placed }} Students</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 border-start border-primary border-4 shadow-sm">
+            <div class="text-muted small mb-1">Year Filter</div>
+            <h3 class="fw-bold text-primary mb-0">{% if f_year %}{{ f_year }}{% else %}All Years{% endif %}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 border-start border-purple border-4 shadow-sm" style="border-color:#7c3aed !important;">
+            <div class="text-muted small mb-1">Branch Filter</div>
+            <h3 class="fw-bold mb-0" style="color:#7c3aed;">{% if f_branch %}{{ f_branch }}{% else %}All Branches{% endif %}</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Print Header -->
+<div class="print-header mb-4 text-center border-bottom pb-3">
+    <h2 class="fw-bold">{{ COLLEGE_NAME }}</h2>
+    <h4>Placement Records</h4>
+    <div class="d-flex justify-content-center gap-4 text-muted small">
+        <span><strong>Year:</strong> {% if f_year %}{{ f_year }}{% else %}All{% endif %}</span>
+        <span><strong>Branch:</strong> {% if f_branch %}{{ f_branch }}{% else %}All{% endif %}</span>
+        <span><strong>Total:</strong> {{ total_placed }} Students</span>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Student</th>
+                    <th>Student ID</th>
+                    <th>Branch</th>
+                    <th>Year</th>
+                    <th>CGPA</th>
+                    <th>Company</th>
+                    <th>Package</th>
+                    <th>Placement Year</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in object_list %}
+                <tr>
+                    <td class="text-muted small">{{ loop.index }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if s.profile_photo %}
+                            <img src="{{ s.profile_photo.url }}" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;" alt="">
+                            {% else %}
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                                <i class="fas fa-user text-muted" style="font-size:.8rem;"></i>
+                            </div>
+                            {% endif %}
+                            <span class="fw-semibold">{{ s.name| default('—') }}</span>
+                        </div>
+                    </td>
+                    <td class="text-muted small">{{ s.student_id }}</td>
+                    <td><span class="branch-chip">{{ s.branch| default('—') }}</span></td>
+                    <td>{{ s.year| default('—') }}</td>
+                    <td>
+                        {% if s.cgpa %}
+                        <span class="badge bg-info text-dark fw-bold">{{ s.cgpa }}</span>
+                        {% else %}&mdash;{% endif %}
+                    </td>
+                    <td class="fw-semibold">
+                        <i class="fas fa-building text-primary me-1" style="font-size:.8rem;"></i>
+                        {{ s.placement_company| default('—') }}
+                    </td>
+                    <td>
+                        {% if s.placement_package %}
+                        <span class="pkg-badge">{{ s.placement_package }} LPA</span>
+                        {% else %}&mdash;{% endif %}
+                    </td>
+                    <td>
+                        {% if s.placement_year %}
+                        <span class="year-chip">{{ s.placement_year }}</span>
+                        {% else %}&mdash;{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <i class="fas fa-folder-open fa-2x text-muted mb-3 d-block"></i>
+                        <p class="text-muted mb-1">No placed students found.</p>
+                        <small class="text-muted">Try changing or clearing the filters above.</small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="d-flex justify-content-center p-3 no-print">
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if f_year %}&year={{ f_year }}{% endif %}{% if f_branch %}&branch={{ f_branch }}{% endif %}">&laquo;</a></li>
+                {% endif %}
+                <li class="page-item active"><a class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</a></li>
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if f_year %}&year={{ f_year }}{% endif %}{% if f_branch %}&branch={{ f_branch }}{% endif %}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

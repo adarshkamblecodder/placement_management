@@ -1,0 +1,274 @@
+================================================================================
+  PLACEMENT MANAGEMENT SYSTEM — DEPLOYMENT GUIDE
+================================================================================
+
+  Three deployment options:
+    Option A — Render.com        (Recommended, Free Tier Available)
+    Option B — VPS / Ubuntu      (DigitalOcean, AWS EC2, etc.)
+    Option C — Railway.app       (Simplest, 1-click)
+
+================================================================================
+  OPTION A — RENDER.COM (RECOMMENDED)
+================================================================================
+
+STEP 1 — Push code to GitHub
+-------------------------------
+  git init
+  git add .
+  git commit -m "initial commit"
+  git remote add origin https://github.com/your-username/placement-management.git
+  git push -u origin main
+
+
+STEP 2 — Create a PostgreSQL Database on Render
+-------------------------------------------------
+  1. Go to https://render.com
+  2. Click New → PostgreSQL
+  3. Give it a name (e.g. placement-db)
+  4. Click Create Database
+  5. Note down the following after it provisions:
+       - Internal Database URL
+       - Hostname
+       - Port
+       - Database name
+       - Username
+       - Password
+
+
+STEP 3 — Create a Web Service on Render
+-----------------------------------------
+  1. Click New → Web Service
+  2. Connect your GitHub repository
+  3. Set the following:
+       Runtime        : Node
+       Build Command  : npm install
+       Start Command  : node server.js
+
+
+STEP 4 — Add Environment Variables on Render
+----------------------------------------------
+  Go to your Web Service → Environment tab → Add the following:
+
+  NODE_ENV          = production
+  SECRET_KEY        = (generate using: openssl rand -hex 32)
+  DB_HOST           = (Render Postgres internal hostname)
+  DB_PORT           = 5432
+  DB_NAME           = (your database name)
+  DB_USER           = (your database user)
+  DB_PASSWORD       = (your database password)
+  COLLEGE_NAME      = Your College Name
+  COLLEGE_LOGO      = /static/logo.png
+  DOMAIN_NAME       = your-app.onrender.com
+  THEME_COLOR       = #4f46e5
+  THEME_COLOR_DARK  = #0ea5e9
+  SHOW_POWERED_BY   = true
+  POWERED_BY_NAME   = Placement Portal
+  SMTP_HOST         = smtp.gmail.com
+  SMTP_PORT         = 587
+  SMTP_SECURE       = false
+  SMTP_USER         = your@gmail.com
+  SMTP_PASS         = your_gmail_app_password
+  MAIL_FROM         = your@gmail.com
+
+
+STEP 5 — Deploy
+-----------------
+  Render auto-deploys on every push to the main branch.
+  You can also trigger a manual deploy from the Render dashboard.
+
+
+================================================================================
+  OPTION B — VPS / UBUNTU SERVER (DigitalOcean, AWS EC2, etc.)
+================================================================================
+
+STEP 1 — SSH into your server and install dependencies
+--------------------------------------------------------
+  sudo apt update
+  sudo apt install -y nodejs npm postgresql postgresql-contrib nginx
+
+
+STEP 2 — Create the PostgreSQL database
+-----------------------------------------
+  sudo -u postgres psql
+
+  Inside the psql prompt run:
+    CREATE USER placement_user WITH PASSWORD 'your_password';
+    CREATE DATABASE placement_db OWNER placement_user;
+    \q
+
+
+STEP 3 — Upload the project to the server
+-------------------------------------------
+  From your local machine run:
+
+  scp -r h:/placement_management user@your-server-ip:/var/www/placement_management
+
+  OR clone from GitHub directly on the server:
+
+  git clone https://github.com/your-username/placement-management.git /var/www/placement_management
+
+
+STEP 4 — Install dependencies on the server
+---------------------------------------------
+  cd /var/www/placement_management
+  npm install --omit=dev
+
+
+STEP 5 — Create the .env file on the server
+---------------------------------------------
+  cp .env.sample .env
+  nano .env
+
+  Fill in all the values (see Option A Step 4 for the full list).
+
+
+STEP 6 — Install PM2 and start the app
+----------------------------------------
+  npm install -g pm2
+  pm2 start server.js --name placement-portal
+  pm2 save
+  pm2 startup
+  (Follow the printed command to enable auto-start on server reboot)
+
+
+STEP 7 — Configure Nginx as a reverse proxy
+---------------------------------------------
+  sudo nano /etc/nginx/sites-available/placement
+
+  Paste the following inside the file:
+
+  -----------------------------------------------------------------------
+  server {
+      listen 80;
+      server_name yourdomain.com;
+
+      client_max_body_size 10M;
+
+      location / {
+          proxy_pass http://localhost:3000;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection 'upgrade';
+          proxy_set_header Host $host;
+          proxy_cache_bypass $http_upgrade;
+      }
+
+      location /static/ {
+          alias /var/www/placement_management/staticfiles/;
+      }
+
+      location /media/ {
+          alias /var/www/placement_management/media/;
+      }
+  }
+  -----------------------------------------------------------------------
+
+  Then run:
+  sudo ln -s /etc/nginx/sites-available/placement /etc/nginx/sites-enabled/
+  sudo nginx -t
+  sudo systemctl restart nginx
+
+
+STEP 8 — Enable HTTPS with SSL (Optional but Recommended)
+-----------------------------------------------------------
+  sudo apt install certbot python3-certbot-nginx
+  sudo certbot --nginx -d yourdomain.com
+
+  Certbot will automatically renew the certificate every 90 days.
+
+
+================================================================================
+  OPTION C — RAILWAY.APP (SIMPLEST — 1 CLICK)
+================================================================================
+
+STEP 1 — Deploy from GitHub
+------------------------------
+  1. Go to https://railway.app
+  2. Click New Project → Deploy from GitHub
+  3. Select your repository
+
+
+STEP 2 — Add PostgreSQL
+--------------------------
+  1. Inside your project click New → Database → Add PostgreSQL
+  2. Railway automatically injects the DATABASE_URL environment variable
+
+
+STEP 3 — Add Environment Variables
+-------------------------------------
+  Go to your service → Variables tab
+  Add all the variables listed in Option A Step 4
+  (Railway uses DATABASE_URL automatically so you may skip individual DB_ vars)
+
+
+STEP 4 — Deploy
+-----------------
+  Railway detects the Procfile automatically:
+    web: node server.js
+
+  The app deploys on every push to the main branch.
+
+
+================================================================================
+  AFTER ANY DEPLOYMENT — FIRST-TIME SETUP
+================================================================================
+
+The app automatically creates an admin account only in development mode.
+For production, run one of the following manually on the server:
+
+  node scripts/create_admin_user.js
+       OR
+  node reset_admin.js
+
+Then verify the app is running by visiting:
+
+  GET https://yourdomain.com/health
+
+Expected response:
+  { "ok": true, "service": "placement-node" }
+
+
+================================================================================
+  GMAIL APP PASSWORD SETUP (Required for Email / SMTP)
+================================================================================
+
+  1. Go to https://myaccount.google.com
+  2. Click Security
+  3. Enable 2-Step Verification (required)
+  4. Search for "App Passwords"
+  5. Create a new App Password → Select "Mail"
+  6. Copy the generated 16-character password
+  7. Paste it as the value of SMTP_PASS in your environment variables
+
+
+================================================================================
+  ENVIRONMENT VARIABLES — QUICK REFERENCE
+================================================================================
+
+  Variable            Description
+  ------------------- --------------------------------------------------------
+  NODE_ENV            Set to "production" for live deployment
+  SECRET_KEY          Random secret for session encryption (min 32 chars)
+  DB_HOST             PostgreSQL server hostname
+  DB_PORT             PostgreSQL port (default: 5432)
+  DB_NAME             Database name
+  DB_USER             Database username
+  DB_PASSWORD         Database password
+  COLLEGE_NAME        Your college name (shown in UI and emails)
+  COLLEGE_LOGO        Path to college logo (/static/logo.png)
+  DOMAIN_NAME         Your deployed domain (e.g. placement.yourcollege.edu)
+  THEME_COLOR         Primary color for light mode (hex, e.g. #4f46e5)
+  THEME_COLOR_DARK    Primary color for dark mode (hex, e.g. #0ea5e9)
+  SHOW_POWERED_BY     true or false
+  POWERED_BY_NAME     Name shown in footer (e.g. Placement Portal)
+  SMTP_HOST           SMTP server host (e.g. smtp.gmail.com)
+  SMTP_PORT           SMTP port (587 for TLS, 465 for SSL)
+  SMTP_SECURE         false for port 587, true for port 465
+  SMTP_USER           Your email address
+  SMTP_PASS           Gmail App Password (16 characters)
+  MAIL_FROM           Sender email address
+
+
+================================================================================
+  END OF DEPLOYMENT GUIDE
+================================================================================

@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0 text-dark">System Settings</h2>
+        <p class="text-muted small mt-1">Manage core system data and configurations</p>
+    </div>
+</div>
+
+{% for msg in messages %}
+<div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+    <i class="fas fa-{% if msg.tags == 'success' %}check-circle{% elif msg.tags == 'danger' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+    {{ msg.text }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="row g-4">
+    <!-- Email / SMTP -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-bold">
+                <i class="fas fa-envelope me-2 text-primary"></i>Email / SMTP (Login Credentials)
+            </div>
+            <div class="card-body">
+                {% if mailDiagnostics.configured %}
+                <div class="alert alert-success small mb-3">
+                    <i class="fas fa-check-circle me-1"></i>
+                    SMTP looks configured for <strong>{{ mailDiagnostics.user }}</strong> via {{ mailDiagnostics.host }}:{{ mailDiagnostics.port }}.
+                </div>
+                {% else %}
+                <div class="alert alert-warning small mb-3">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Email is <strong>not ready</strong>. Student login emails will not send until SMTP is configured in <code>.env</code>.
+                    <ul class="mb-0 mt-2">
+                        {% for issue in mailDiagnostics.issues %}
+                        <li>{{ issue }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <p class="text-muted small mb-3">
+                    For Gmail: enable 2-Step Verification → create an <strong>App Password</strong> → set
+                    <code>SMTP_USER</code> to your Gmail and <code>SMTP_PASS</code> to the 16-character app password.
+                    Restart the server after editing <code>.env</code>.
+                </p>
+
+                <form action="/settings/test-email/" method="POST" class="row g-2 align-items-end">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    <div class="col-md-8">
+                        <label class="form-label small fw-semibold">Send test email to</label>
+                        <input type="email" name="email" class="form-control" placeholder="your.email@gmail.com" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane me-1"></i>Test SMTP
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Account -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-bold">
+                <i class="fas fa-user-shield me-2 text-primary"></i>Admin Account
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Change your admin account password. You will need to enter your current password to confirm.
+                </p>
+                <a href="/admin/change-password/" class="btn btn-primary w-100">
+                    <i class="fas fa-key me-2"></i>Change Password
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone: Students -->
+    <div class="col-md-6">
+        <div class="card border-danger shadow-sm h-100">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="fas fa-users-slash me-2"></i>Wipe Students Data
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    This action will permanently delete all <strong>{{ studentCount }}</strong> students from the database. 
+                    It will also wipe all associated student profiles, login metadata, placement records, and applications.
+                </p>
+                <div class="alert alert-warning small">
+                    <i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone. Use only for testing or hard resets.
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 pb-3">
+                <button class="btn btn-outline-danger w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#wipeStudentsModal">
+                    <i class="fas fa-trash-alt me-2"></i>Delete All Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danger Zone: Companies -->
+    <div class="col-md-6">
+        <div class="card border-danger shadow-sm h-100">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="fas fa-building-circle-xmark me-2"></i>Wipe Companies Data
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    This action will permanently delete all <strong>{{ companyCount }}</strong> companies from the database. 
+                    It will also wipe all associated placement drives, interview rounds, and job posts.
+                </p>
+                <div class="alert alert-warning small">
+                    <i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone. Use only for testing or hard resets.
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 pb-3">
+                <button class="btn btn-outline-danger w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#wipeCompaniesModal">
+                    <i class="fas fa-trash-alt me-2"></i>Delete All Companies
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Single Student by ID -->
+    <div class="col-md-6">
+        <div class="card border-warning shadow-sm h-100">
+            <div class="card-header bg-warning text-dark fw-bold">
+                <i class="fas fa-user-minus me-2"></i>Delete Student by ID
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Permanently remove a single student and all their associated records (profile, login,
+                    applications, placements, round results) by entering their Student ID.
+                </p>
+                <div class="alert alert-warning small">
+                    <i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone.
+                    Double-check the ID before confirming.
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 pb-3">
+                <button class="btn btn-outline-warning w-100 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#deleteStudentByIdModal">
+                    <i class="fas fa-user-minus me-2"></i>Delete Single Student
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Student by ID Modal -->
+<div class="modal fade" id="deleteStudentByIdModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+            <div class="modal-header bg-warning text-dark p-4">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-minus me-2"></i>Delete Student by ID</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/settings/delete-student-by-id/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Student ID <span class="text-danger">*</span></label>
+                        <input type="text" name="student_id" id="deleteStudentId" class="form-control"
+                               placeholder="e.g. STU001" required autocomplete="off"
+                               oninput="checkStudentIdInput()">
+                        <div class="form-text text-muted">Enter the exact Student ID of the student to delete.</div>
+                    </div>
+                    <div class="alert alert-danger small mb-0">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        This will permanently delete the student along with their profile, login account,
+                        applications, placements, and round results.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning rounded-3 px-4 shadow-sm fw-bold text-dark"
+                            id="btnDeleteStudentById" disabled>
+                        <i class="fas fa-user-minus me-1"></i>Delete Student
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Wipe Students Modal -->
+<div class="modal fade" id="wipeStudentsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Student Wipe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/settings/delete-all-students/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="modal-body p-4">
+                    <p class="mb-3 text-dark">
+                        Are you absolutely sure you want to delete <strong>all {{ studentCount }} students</strong>?
+                    </p>
+                    <p class="text-muted small">Type <strong>DELETE</strong> below to confirm.</p>
+                    <input type="text" class="form-control" id="confirmStudentDelete" onkeyup="checkStudentConfirm()" placeholder="Type DELETE" required>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-3 px-4 shadow-sm" id="btnStudentDelete" disabled>
+                        <i class="fas fa-trash-alt me-1"></i>Wipe Students
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Wipe Companies Modal -->
+<div class="modal fade" id="wipeCompaniesModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Company Wipe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/settings/delete-all-companies/" method="POST">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <div class="modal-body p-4">
+                    <p class="mb-3 text-dark">
+                        Are you absolutely sure you want to delete <strong>all {{ companyCount }} companies</strong>?
+                    </p>
+                    <p class="text-muted small">Type <strong>DELETE</strong> below to confirm.</p>
+                    <input type="text" class="form-control" id="confirmCompanyDelete" onkeyup="checkCompanyConfirm()" placeholder="Type DELETE" required>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-3 px-4 shadow-sm" id="btnCompanyDelete" disabled>
+                        <i class="fas fa-trash-alt me-1"></i>Wipe Companies
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function checkStudentConfirm() {
+        const input = document.getElementById('confirmStudentDelete').value;
+        const btn = document.getElementById('btnStudentDelete');
+        btn.disabled = input !== 'DELETE';
+    }
+
+    function checkCompanyConfirm() {
+        const input = document.getElementById('confirmCompanyDelete').value;
+        const btn = document.getElementById('btnCompanyDelete');
+        btn.disabled = input !== 'DELETE';
+    }
+
+    function checkStudentIdInput() {
+        const input = document.getElementById('deleteStudentId').value.trim();
+        const btn = document.getElementById('btnDeleteStudentById');
+        btn.disabled = input.length === 0;
+    }
+
+    // Reset student-by-id modal state when it closes
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('deleteStudentByIdModal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function () {
+                document.getElementById('deleteStudentId').value = '';
+                document.getElementById('btnDeleteStudentById').disabled = true;
+            });
+        }
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,144 @@
+<!-- Universal AI Advisory Chat Widget -->
+<div id="aiAdvisorWidget" style="position: fixed; bottom: 24px; right: 24px; z-index: 1050;">
+  <!-- Trigger Button -->
+  <button id="aiAdvisorTriggerBtn" class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid rgba(255,255,255,0.2);">
+    <i class="fas fa-robot fa-lg text-white" id="aiTriggerIcon"></i>
+  </button>
+
+  <!-- Chat Window -->
+  <div id="aiAdvisorChatWindow" class="card border-0 shadow-lg rounded-4 overflow-hidden" style="display: none; position: absolute; bottom: 70px; right: 0; width: 360px; height: 490px; background: var(--card-bg); backdrop-filter: blur(20px);">
+    <!-- Chat Header -->
+    <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded-circle bg-white bg-opacity-20 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+          <i class="fas fa-wand-magic-sparkles small"></i>
+        </div>
+        <div>
+          <h6 class="fw-bold mb-0" style="font-size: 0.9rem;">AI Wealth Advisor</h6>
+          <span class="text-white-50" style="font-size: 0.7rem;"><i class="fas fa-circle text-success me-1 fa-2xs"></i>Online &bull; General Info</span>
+        </div>
+      </div>
+      <button type="button" class="btn-close btn-close-white small" id="aiAdvisorCloseBtn"></button>
+    </div>
+
+    <!-- Chat Messages Stream -->
+    <div id="aiChatMessages" class="p-3 overflow-y-auto flex-grow-1" style="font-size: 0.85rem; height: 320px;">
+      <div class="p-2 mb-2 rounded-3 bg-light text-muted small border">
+        <i class="fas fa-shield-alt text-primary me-1"></i>
+        <strong>SEBI Advisory Notice:</strong> This AI provides educational financial information. For personalized portfolio plans, connect with our licensed advisors.
+      </div>
+      <div class="d-flex gap-2 mb-3">
+        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">AI</div>
+        <div class="p-2 rounded-3 bg-light text-dark" style="max-width: 80%;">
+          Hello! I can help explain SIP compounding, retirement targets, and tax optimization strategies. What would you like to explore?
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Prompts -->
+    <div class="px-3 py-1 d-flex gap-1 overflow-x-auto bg-light border-top" style="white-space: nowrap;">
+      <button class="badge rounded-pill bg-white text-primary border py-1 px-2 small quick-prompt-btn" data-prompt="How does SIP compounding work?">SIP Returns?</button>
+      <button class="badge rounded-pill bg-white text-primary border py-1 px-2 small quick-prompt-btn" data-prompt="How much corpus do I need for retirement?">Retirement Corpus?</button>
+      <button class="badge rounded-pill bg-white text-primary border py-1 px-2 small quick-prompt-btn" data-prompt="How can I save tax under Section 80C?">Save Tax?</button>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="p-2 border-top bg-white d-flex gap-2">
+      <input type="text" id="aiChatInput" class="form-control form-control-sm border-0 bg-light rounded-pill px-3" placeholder="Ask a financial question...">
+      <button id="aiChatSendBtn" class="btn btn-sm btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+        <i class="fas fa-paper-plane small"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const triggerBtn = document.getElementById('aiAdvisorTriggerBtn');
+  const chatWindow = document.getElementById('aiAdvisorChatWindow');
+  const closeBtn = document.getElementById('aiAdvisorCloseBtn');
+  const sendBtn = document.getElementById('aiChatSendBtn');
+  const input = document.getElementById('aiChatInput');
+  const messages = document.getElementById('aiChatMessages');
+
+  let isOpen = false;
+  function toggleChat() {
+    isOpen = !isOpen;
+    chatWindow.style.display = isOpen ? 'flex' : 'none';
+    chatWindow.style.flexDirection = 'column';
+    triggerBtn.style.transform = isOpen ? 'scale(0.9) rotate(90deg)' : 'scale(1)';
+    if (isOpen) input.focus();
+  }
+
+  triggerBtn.addEventListener('click', toggleChat);
+  closeBtn.addEventListener('click', toggleChat);
+
+  async function sendMessage(text) {
+    const query = text || input.value.trim();
+    if (!query) return;
+
+    // Append user bubble
+    messages.innerHTML += `
+      <div class="d-flex justify-content-end mb-2">
+        <div class="p-2 rounded-3 bg-primary text-white text-end" style="max-width: 80%;">
+          ${query}
+        </div>
+      </div>
+    `;
+    input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+
+    // Loading indicator
+    const loadingId = 'aiLoading_' + Date.now();
+    messages.innerHTML += `
+      <div class="d-flex gap-2 mb-2" id="${loadingId}">
+        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">AI</div>
+        <div class="p-2 rounded-3 bg-light text-muted small">
+          <span class="spinner-border spinner-border-sm me-1"></span>Analyzing knowledge base...
+        </div>
+      </div>
+    `;
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      const loader = document.getElementById(loadingId);
+      if (loader) loader.remove();
+
+      if (data.success) {
+        messages.innerHTML += `
+          <div class="d-flex gap-2 mb-3">
+            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">AI</div>
+            <div class="p-2 rounded-3 bg-light text-dark" style="max-width: 85%; line-height: 1.4;">
+              ${data.response.replace(/\\n/g, '<br>').replace(/\\[([^\\]]+)\\]\\(([^\\)]+)\\)/g, '<a href="$2" class="text-primary fw-semibold">$1</a>')}
+            </div>
+          </div>
+        `;
+      } else {
+        messages.innerHTML += `<div class="text-danger small mb-2">Error getting advice. Please try again.</div>`;
+      }
+    } catch (e) {
+      const loader = document.getElementById(loadingId);
+      if (loader) loader.remove();
+      messages.innerHTML += `<div class="text-danger small mb-2">Network error. Please try again.</div>`;
+    }
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', () => sendMessage());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  document.querySelectorAll('.quick-prompt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sendMessage(btn.dataset.prompt);
+    });
+  });
+})();
+</script>

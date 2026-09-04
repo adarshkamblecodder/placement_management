@@ -1,0 +1,437 @@
+{% extends 'base.html' %}
+{% block title %}{{ formTitle }} — {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.type }} alert-dismissible fade show" role="alert">
+  {{ msg.text }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+
+<div class="d-flex align-items-center mb-4">
+  <a href="/student/internships/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+  <div>
+    <h3 class="fw-bold mb-0" style="color:var(--text-main);">
+      <i class="fas fa-laptop-code text-primary me-2"></i>{{ formTitle }}
+    </h3>
+    <p class="text-muted small mb-0">Fill in all required (*) fields accurately.</p>
+  </div>
+</div>
+
+<form method="POST" action="{{ formAction }}" enctype="multipart/form-data" id="internshipForm">
+  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+
+  {# ══════════════════════════════════════════════════════════
+     SECTION 1 — Internship Details
+  ══════════════════════════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-briefcase me-2"></i>1. Internship Details
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Internship Status <span class="text-danger">*</span></label>
+          <select name="status" class="form-select" required>
+            {% set statuses = ['Completed','Ongoing','Not Done'] %}
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if internship and internship.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span></label>
+          <input type="text" name="companyName" class="form-control" required
+                 placeholder="e.g. Tata Consultancy Services"
+                 value="{{ internship.companyName if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Internship Type <span class="text-danger">*</span></label>
+          <select name="internshipType" class="form-select" required>
+            {% set types = ['Technical','Non-Technical','Research'] %}
+            {% for t in types %}
+            <option value="{{ t }}" {% if internship and internship.internshipType == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Domain / Technology <span class="text-danger">*</span></label>
+          <input type="text" name="domain" class="form-control" required
+                 placeholder="e.g. Web Development, Java"
+                 value="{{ internship.domain if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Internship Role <span class="text-danger">*</span></label>
+          <input type="text" name="role" class="form-control" required
+                 placeholder="e.g. Software Development Intern"
+                 value="{{ internship.role if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+          <input type="date" name="startDate" id="startDate" class="form-control" required
+                 value="{{ internship.startDate if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+          <input type="date" name="endDate" id="endDate" class="form-control" required
+                 value="{{ internship.endDate if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Duration</label>
+          <input type="text" id="durationDisplay" class="form-control bg-light" readonly
+                 placeholder="Auto-calculated"
+                 value="{{ internship.duration if internship else '' }}">
+          <div class="form-text">Calculated automatically from Start &amp; End Date.</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Work Mode <span class="text-danger">*</span></label>
+          <select name="workMode" class="form-select" required>
+            {% set modes = ['On-site','Remote','Hybrid'] %}
+            {% for m in modes %}
+            <option value="{{ m }}" {% if internship and internship.workMode == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Internship Description</label>
+          <textarea name="description" class="form-control" rows="3"
+                    placeholder="Brief description of the internship role and responsibilities...">{{ internship.description if internship else '' }}</textarea>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════
+     SECTION 2 — Internship Work
+  ══════════════════════════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-tasks me-2"></i>2. Internship Work
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Project Title</label>
+          <input type="text" name="projectTitle" class="form-control"
+                 placeholder="e.g. Placement Management System"
+                 value="{{ internship.projectTitle if internship else '' }}">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Skills / Technologies Used</label>
+          <input type="text" name="skillsUsed" class="form-control"
+                 placeholder="e.g. Java, Spring Boot, MySQL"
+                 value="{{ internship.skillsUsed if internship else '' }}">
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Key Responsibilities</label>
+          <textarea name="responsibilities" class="form-control" rows="3"
+                    placeholder="Describe your main tasks and responsibilities...">{{ internship.responsibilities if internship else '' }}</textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Learning / Outcome</label>
+          <textarea name="outcome" class="form-control" rows="3"
+                    placeholder="What did you learn? What was the outcome?">{{ internship.outcome if internship else '' }}</textarea>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════
+     SECTION 3 — Certificate
+  ══════════════════════════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-certificate me-2"></i>3. Certificate
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">
+            Internship Certificate
+            {% if not internship or not internship.certificateFile %}
+            <span class="text-danger">*</span>
+            {% endif %}
+            <span class="text-muted fw-normal">(Required)</span>
+          </label>
+
+          {# ── Case A: editing a record that already has a certificate ── #}
+          {% if internship and internship.certificateFile %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2 bg-success bg-opacity-10 border border-success border-opacity-25 rounded">
+            <i class="fas fa-file-circle-check text-success"></i>
+            <span class="small fw-semibold text-success">Certificate on file</span>
+            <span class="text-muted small">·</span>
+            <a href="/student/internships/{{ internship.id }}/certificate" target="_blank"
+               class="btn btn-sm btn-outline-success py-0 px-2">
+              <i class="fas fa-eye me-1"></i>View
+            </a>
+          </div>
+          <div class="mb-1 small text-muted">Upload a new file below to replace the existing certificate.</div>
+          <input type="file" name="certificateFile" id="certificateFile" class="form-control"
+                 accept=".pdf,.jpg,.jpeg,.png">
+          <div id="certPreview" class="mt-2 d-none"></div>
+
+          {# ── Case B: new record or record missing certificate ── #}
+          {% else %}
+          <input type="file" name="certificateFile" id="certificateFile" class="form-control"
+                 accept=".pdf,.jpg,.jpeg,.png" required>
+          <div class="form-text text-muted mt-1">
+            <i class="fas fa-info-circle me-1"></i>
+            Upload your internship certificate (PDF, JPG, or PNG, max 5 MB). This document is mandatory.
+          </div>
+          <div id="certPreview" class="mt-2 d-none"></div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Certificate Number <span class="text-muted fw-normal">(Optional)</span></label>
+          <input type="text" name="certificateNumber" class="form-control"
+                 placeholder="e.g. TCS/INT/2026/001"
+                 value="{{ internship.certificateNumber if internship else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Certificate Issue Date <span class="text-muted fw-normal">(Optional)</span></label>
+          <input type="date" name="certificateIssueDate" class="form-control"
+                 value="{{ internship.certificateIssueDate if internship else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════
+     SECTION 4 — Supervisor
+  ══════════════════════════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-user-tie me-2"></i>4. Supervisor
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Mentor / Supervisor Name <span class="text-muted fw-normal">(Optional)</span></label>
+          <input type="text" name="mentorName" class="form-control"
+                 placeholder="e.g. Mr. Rajesh Kumar"
+                 value="{{ internship.mentorName if internship else '' }}">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Mentor Email / Contact <span class="text-muted fw-normal">(Optional)</span></label>
+          <input type="text" name="mentorContact" class="form-control"
+                 placeholder="e.g. rajesh@company.com or +91-9876543210"
+                 value="{{ internship.mentorContact if internship else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ══════════════════════════════════════════════════════════
+     SECTION 5 — Employment / PPO
+  ══════════════════════════════════════════════════════════ #}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h5 class="mb-0 fw-bold text-primary">
+        <i class="fas fa-money-bill-wave me-2"></i>5. Employment / PPO
+      </h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Stipend Received</label>
+          <select name="stipendReceived" id="stipendReceived" class="form-select" onchange="toggleStipend(this)">
+            <option value="false" {% if not internship or not internship.stipendReceived %}selected{% endif %}>No</option>
+            <option value="true"  {% if internship and internship.stipendReceived %}selected{% endif %}>Yes</option>
+          </select>
+        </div>
+
+        <div class="col-md-3" id="stipendAmountBlock"
+             style="{{ 'display:none' if not internship or not internship.stipendReceived else '' }}">
+          <label class="form-label fw-semibold">Stipend Amount (₹/month)</label>
+          <input type="number" name="stipendAmount" class="form-control" min="0" step="100"
+                 placeholder="e.g. 10000"
+                 value="{{ internship.stipendAmount if internship and internship.stipendAmount else '' }}">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">PPO Offered</label>
+          <select name="ppoOffered" id="ppoOffered" class="form-select" onchange="togglePPO(this)">
+            <option value="false" {% if not internship or not internship.ppoOffered %}selected{% endif %}>No</option>
+            <option value="true"  {% if internship and internship.ppoOffered %}selected{% endif %}>Yes</option>
+          </select>
+        </div>
+
+        <div class="col-md-3" id="ppoPackageBlock"
+             style="{{ 'display:none' if not internship or not internship.ppoOffered else '' }}">
+          <label class="form-label fw-semibold">PPO Package (LPA)</label>
+          <input type="number" name="ppoPackage" class="form-control" min="0" step="0.1"
+                 placeholder="e.g. 8.5"
+                 value="{{ internship.ppoPackage if internship and internship.ppoPackage else '' }}">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mb-5">
+    <a href="/student/internships/" class="btn btn-light border px-4">Cancel</a>
+    <button type="submit" class="btn btn-primary px-5">
+      <i class="fas fa-save me-2"></i>Save Internship
+    </button>
+  </div>
+
+</form>
+
+<script>
+  // ── Auto-calculate duration ──────────────────────────────────────────────
+  function calcDuration() {
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    const display = document.getElementById('durationDisplay');
+    if (!s || !e) { display.value = ''; return; }
+    const start = new Date(s), end = new Date(e);
+    if (end < start) { display.value = 'End date before start date'; return; }
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days  = end.getDate()  - start.getDate();
+    if (days   < 0) { months--; days  += new Date(end.getFullYear(), end.getMonth(), 0).getDate(); }
+    if (months < 0) { years--;  months += 12; }
+    const parts = [];
+    if (years  > 0) parts.push(years  + ' year'  + (years  > 1 ? 's' : ''));
+    if (months > 0) parts.push(months + ' month' + (months > 1 ? 's' : ''));
+    if (days   > 0) parts.push(days   + ' day'   + (days   > 1 ? 's' : ''));
+    display.value = parts.length ? parts.join(' ') : 'Less than a day';
+  }
+  document.getElementById('startDate').addEventListener('change', calcDuration);
+  document.getElementById('endDate').addEventListener('change', calcDuration);
+  calcDuration();
+
+  // ── Toggle conditional fields ────────────────────────────────────────────
+  function toggleStipend(sel) {
+    document.getElementById('stipendAmountBlock').style.display =
+      sel.value === 'true' ? '' : 'none';
+  }
+  function togglePPO(sel) {
+    document.getElementById('ppoPackageBlock').style.display =
+      sel.value === 'true' ? '' : 'none';
+  }
+
+  // ── Certificate: live preview + client-side validation ──────────────────
+  const certInput   = document.getElementById('certificateFile');
+  const certPreview = document.getElementById('certPreview');
+  const ALLOWED_TYPES = new Set(['application/pdf','image/jpeg','image/png']);
+  const ALLOWED_EXT  = /\.(pdf|jpg|jpeg|png)$/i;
+
+  if (certInput) {
+    certInput.addEventListener('change', function () {
+      certPreview.innerHTML = '';
+      certPreview.classList.add('d-none');
+
+      const file = this.files[0];
+      if (!file) return;
+
+      // Type validation
+      if (!ALLOWED_TYPES.has(file.type) && !ALLOWED_EXT.test(file.name)) {
+        certPreview.innerHTML = `<div class="alert alert-danger py-2 small mb-0">
+          <i class="fas fa-exclamation-triangle me-1"></i>
+          Invalid file type. Only PDF, JPG, and PNG are accepted.</div>`;
+        certPreview.classList.remove('d-none');
+        this.value = '';
+        return;
+      }
+
+      // Size validation (5 MB)
+      if (file.size > 5 * 1024 * 1024) {
+        certPreview.innerHTML = `<div class="alert alert-danger py-2 small mb-0">
+          <i class="fas fa-exclamation-triangle me-1"></i>
+          File too large. Maximum allowed size is 5 MB.</div>`;
+        certPreview.classList.remove('d-none');
+        this.value = '';
+        return;
+      }
+
+      // Success preview
+      const isImage = file.type.startsWith('image/');
+      let previewHTML = `
+        <div class="d-flex align-items-center gap-2 p-2 bg-success bg-opacity-10 border border-success border-opacity-25 rounded">
+          <i class="fas fa-${isImage ? 'image' : 'file-pdf'} text-success fa-lg"></i>
+          <div class="flex-grow-1">
+            <div class="small fw-semibold text-success">Certificate Uploaded ✓</div>
+            <div class="text-muted" style="font-size:.78rem;">${file.name}</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
+                  onclick="removeCert()" title="Remove">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>`;
+
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          previewHTML += `<div class="mt-2">
+            <img src="${e.target.result}" class="img-thumbnail"
+                 style="max-height:160px; max-width:100%; object-fit:contain;">
+          </div>`;
+          certPreview.innerHTML = previewHTML;
+          certPreview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      certPreview.innerHTML = previewHTML;
+      certPreview.classList.remove('d-none');
+    });
+  }
+
+  window.removeCert = function () {
+    if (certInput) certInput.value = '';
+    if (certPreview) { certPreview.innerHTML = ''; certPreview.classList.add('d-none'); }
+  };
+
+  // ── Client-side date + certificate validation on submit ──────────────────
+  document.getElementById('internshipForm').addEventListener('submit', function(e) {
+    const s  = document.getElementById('startDate').value;
+    const en = document.getElementById('endDate').value;
+    if (s && en && new Date(en) < new Date(s)) {
+      e.preventDefault();
+      alert('End Date cannot be before Start Date.');
+      return;
+    }
+    // On new records (no existing cert on file), require a file selection
+    const hasCertOnFile = {{ 'true' if internship and internship.certificateFile else 'false' }};
+    if (!hasCertOnFile && certInput && !certInput.files.length) {
+      e.preventDefault();
+      alert('Internship Certificate is required.');
+      certInput.focus();
+    }
+  });
+</script>
+{% endblock %}

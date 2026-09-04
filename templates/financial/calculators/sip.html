@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4 fade-in">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+      <i class="fas fa-calculator fa-2x"></i>
+    </div>
+    <div>
+      <h2 class="fw-bold mb-1" style="color: var(--text-main);">SIP Calculator</h2>
+      <p class="text-muted small mb-0">Calculate projected returns and wealth accumulation on your Systematic Investment Plans</p>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    {# Input Column #}
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="background: var(--card-bg);">
+        <h5 class="fw-bold mb-4" style="color: var(--text-main);"><i class="fas fa-sliders text-primary me-2"></i>Investment Inputs</h5>
+        
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-bold text-muted mb-0">Monthly Investment (₹)</label>
+            <span class="fw-bold text-primary fs-5" id="monthlyValText">₹10,000</span>
+          </div>
+          <input type="range" class="form-range" id="monthlyInput" min="500" max="200000" step="500" value="10000">
+        </div>
+
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-bold text-muted mb-0">Expected Return Rate (% p.a.)</label>
+            <span class="fw-bold text-primary fs-5" id="returnValText">12%</span>
+          </div>
+          <input type="range" class="form-range" id="returnInput" min="1" max="30" step="0.5" value="12">
+        </div>
+
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-bold text-muted mb-0">Investment Duration (Years)</label>
+            <span class="fw-bold text-primary fs-5" id="yearsValText">10 Years</span>
+          </div>
+          <input type="range" class="form-range" id="yearsInput" min="1" max="40" step="1" value="10">
+        </div>
+
+        <div class="d-flex flex-column gap-2 pt-3 border-top">
+          <button class="btn btn-outline-primary rounded-3 py-2 d-flex align-items-center justify-content-center gap-2" id="explainAiBtn">
+            <i class="fas fa-wand-magic-sparkles text-primary"></i>
+            <span>Explain This Result with AI</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {# Results & Chart Column #}
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 p-4 h-100 d-flex flex-column justify-content-between" style="background: var(--card-bg);">
+        <div>
+          <h5 class="fw-bold mb-4" style="color: var(--text-main);"><i class="fas fa-chart-pie text-success me-2"></i>Projected Maturity Summary</h5>
+          
+          <div class="row g-3 mb-4">
+            <div class="col-4">
+              <div class="p-3 rounded-4 bg-light text-center">
+                <span class="small text-muted d-block mb-1">Invested Amount</span>
+                <h4 class="fw-bold mb-0 text-dark" id="totalInvestedText">₹12,00,000</h4>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-3 rounded-4 bg-light text-center">
+                <span class="small text-muted d-block mb-1">Estimated Gain</span>
+                <h4 class="fw-bold mb-0 text-success" id="estimatedReturnsText">₹11,23,391</h4>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="p-3 rounded-4 bg-primary bg-opacity-10 text-center border border-primary border-opacity-25">
+                <span class="small text-primary fw-semibold d-block mb-1">Total Maturity Value</span>
+                <h4 class="fw-bold mb-0 text-primary" id="maturityValueText">₹23,23,391</h4>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 250px; position: relative;">
+            <canvas id="sipChart"></canvas>
+          </div>
+        </div>
+
+        {# AI Explanation Card #}
+        <div class="card p-3 border-0 rounded-4 mt-3" id="aiExplanationBox" style="background: rgba(14, 165, 233, 0.08); display: none;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="fas fa-robot text-primary"></i>
+            <strong class="text-primary small">AI Advisor Summary</strong>
+          </div>
+          <p class="mb-0 small text-muted" id="aiExplanationText"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartInstance = null;
+let currentResult = null;
+
+function formatINR(val) {
+  return '₹' + Number(val).toLocaleString('en-IN');
+}
+
+function updateSIP() {
+  const P = Number(document.getElementById('monthlyInput').value);
+  const r = Number(document.getElementById('returnInput').value);
+  const t = Number(document.getElementById('yearsInput').value);
+
+  document.getElementById('monthlyValText').innerText = formatINR(P);
+  document.getElementById('returnValText').innerText = r + '%';
+  document.getElementById('yearsValText').innerText = t + ' Years';
+
+  const i = (r / 100) / 12;
+  const n = t * 12;
+  const invested = P * n;
+  const maturity = i > 0 ? P * ((Math.pow(1 + i, n) - 1) / i) * (1 + i) : invested;
+  const gains = Math.max(0, maturity - invested);
+
+  currentResult = { monthlyInvestment: P, expectedReturnRate: r, durationYears: t, totalInvested: invested, estimatedReturns: gains, maturityValue: maturity };
+
+  document.getElementById('totalInvestedText').innerText = formatINR(Math.round(invested));
+  document.getElementById('estimatedReturnsText').innerText = formatINR(Math.round(gains));
+  document.getElementById('maturityValueText').innerText = formatINR(Math.round(maturity));
+
+  renderChart(invested, gains);
+}
+
+function renderChart(invested, gains) {
+  const ctx = document.getElementById('sipChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Invested Principal', 'Estimated Gain'],
+      datasets: [{
+        data: [Math.round(invested), Math.round(gains)],
+        backgroundColor: ['#64748b', '#10b981'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' }
+      },
+      cutout: '68%'
+    }
+  });
+}
+
+document.getElementById('monthlyInput').addEventListener('input', updateSIP);
+document.getElementById('returnInput').addEventListener('input', updateSIP);
+document.getElementById('yearsInput').addEventListener('input', updateSIP);
+
+document.getElementById('explainAiBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('explainAiBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing...';
+  
+  try {
+    const res = await fetch('/api/calculators/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'sip',
+        inputs: {
+          monthlyInvestment: document.getElementById('monthlyInput').value,
+          expectedReturnRate: document.getElementById('returnInput').value,
+          durationYears: document.getElementById('yearsInput').value,
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('aiExplanationBox').style.display = 'block';
+      document.getElementById('aiExplanationText').innerText = data.explanation;
+    }
+  } catch(e) {
+    alert('Failed to generate explanation.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles text-primary me-2"></i>Explain This Result with AI';
+  }
+});
+
+document.addEventListener('DOMContentLoaded', updateSIP);
+</script>
+{% endblock %}

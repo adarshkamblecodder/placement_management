@@ -1,0 +1,529 @@
+================================================================================
+  PLACEMENT MANAGEMENT — PROJECT STRUCTURE INSIGHT FILE
+  Purpose: AI & developer reference. Read this before touching any file.
+  Last updated: August 2026
+================================================================================
+
+This file is a living map of the codebase. Update it when you add/move files.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROOT DIRECTORY  (placement_management/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  server.js               — App entry point. Calls createApp() from src/app.js
+                            and starts the HTTP server.
+  package.json            — Dependencies and npm scripts (start, dev, seed, etc.)
+  .env                    — Local environment variables (SECRET_KEY, SMTP, etc.)
+                            Never commit this file.
+  .env.sample             — Template showing which env vars are needed.
+  .gitignore              — Git ignore rules (node_modules, .env, db.sqlite3 etc.)
+  db.sqlite3              — SQLite database file (dev only). Do NOT commit.
+  Procfile                — Heroku/Render process declaration.
+
+  PROJECT_STRUCTURE.txt   — THIS FILE. AI/developer orientation guide.
+  ARCHITECTURE.md         — High-level system design and module descriptions.
+  PRODUCT_OVERVIEW.md     — Product feature summary for non-technical readers.
+  README.md               — Setup and run instructions.
+  CONTRIBUTING.md         — Contribution guidelines.
+
+  ── Seed / Utility Scripts (root level, run with `node <file>`) ──────────────
+  seed_students.js        — Seeds 30 test students (CS/AIML/AIDS) with gender,
+                            live projects, and internships. Run once to populate.
+  populate_dummy.js       — Seeds 15 dummy students with profile photos.
+                            Older seed; use seed_students.js for richer data.
+  create_coordinator.js   — One-time script to create a coordinator auth account.
+  reset_admin.js          — Resets admin password. Run if locked out.
+  ai.js                   — AI/GPT integration utility (Gemini). Standalone script.
+
+  ── Scratch / Debug Files (safe to delete) ───────────────────────────────────
+  fix_templates.js        — One-time template migration utility. Done; obsolete.
+  scan_templates.js       — Scans templates for missing variables. Debug tool.
+  scratch_output.html     — Temporary HTML output from scan_templates. Ignore.
+  test_app.js             — Informal test runner. Not a proper test suite.
+  test_db.js              — DB connectivity smoke test.
+  test_render.js          — Template render smoke test.
+
+  ── Media / Static ───────────────────────────────────────────────────────────
+  media/                  — User-uploaded files (resumes, photos, certificates).
+                            Served at /media/<path>.
+    photos/               — Profile photos for dummy data.
+    profile_photos/       — Real student profile photo uploads.
+    resumes/              — Student resume PDF uploads.
+    certificates/         — Internship certificate uploads.
+  staticfiles/            — CSS, JS, images for the frontend UI.
+  dummy_images/           — Sample images used by populate_dummy.js seed.
+  student_import_template.xlsx — Excel template for bulk student import.
+
+  ── Other ────────────────────────────────────────────────────────────────────
+  scripts/                — Admin utility scripts (one-off setup, seeding, etc.)
+    seed_demo_data.js     — Seeds rich demo data for showcasing the system.
+    create_admin_user.js  — Creates an admin auth account.
+    setup_admin.js        — Full admin bootstrap (user + settings).
+    add_dummies.js        — Alternate dummy data seeder.
+    update_excel.js       — Updates the import Excel template.
+    verify_all.js         — Verifies DB records and integrity.
+    test_integration.js   — Integration test runner.
+  RAMMap/                 — Windows RAM monitoring tool (unrelated, ignore).
+  node_modules/           — NPM packages (never edit, never commit).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+src/   — ALL APPLICATION CODE LIVES HERE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  app.js                  — Express app factory. Registers:
+                              - Body parsers (urlencoded + JSON)
+                              - Session middleware
+                              - CSRF middleware (csrfMiddleware)
+                              - Flash messages
+                              - Nunjucks template engine + custom filters
+                              - Static/media file serving
+                              - All routes from src/routes/index.js
+                            createApp() is called by server.js.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/config/             — Environment and service configuration
+──────────────────────────────────────────────────────────────────────────────
+  env.js                  — Loads .env via dotenv, exports typed config values.
+                            Always import from here, never from process.env directly.
+  database.js             — Sequelize instance factory (getSequelize, initSequelize).
+  auth.js                 — Auth configuration (session secret, bcrypt rounds, etc.)
+  upload.js               — Multer/upload configuration (dest paths, size limits).
+  mail.js                 — Nodemailer transporter config + SMTP diagnostics.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/db/                 — Database layer
+──────────────────────────────────────────────────────────────────────────────
+  sequelize.js            — Singleton Sequelize instance getter.
+  models/                 — One file per Sequelize model.
+    index.js              — Imports all models + defines all associations.
+                            THIS IS THE CANONICAL ASSOCIATION FILE.
+                            Check here for all hasMany/belongsTo/as aliases.
+    student.js            — Student profile (main record). PK: student_id (STRING).
+    auth_user.js          — Authentication user (username/password). PK: id (INT).
+    company.js            — Company. PK: id (INT).
+    placement_drive.js    — Placement drive (job opening at a company).
+    shortlist.js          — A named list of candidates for a drive.
+    shortlist_student.js  — Junction: shortlist ↔ student (many-to-many).
+    interview_round.js    — A round within a drive (Round 1, Round 2 etc.)
+    student_round_result.js — A student's result for one interview round.
+    placement.js          — Formal placement record after offer accepted.
+    application.js        — Student job application record (legacy module).
+    job.js                — Job posting linked to a company.
+                            ⚠ MISSING company_id field in model definition —
+                              add: company_id: { type: DataTypes.INTEGER }
+    student_profile.js    — Extended profile (bio, 10th%, 12th%, preferences).
+                            FK: studentId (camelCase) → tracker_student.student_id
+    student_login_meta.js — Tracks first-login state and password reset tokens.
+    resume.js             — Resume file upload record. FK: studentId.
+    internship.js         — Student internship record. FK: studentId.
+    student_project.js    — Student project record. projectType: LIVE | NORMAL.
+    audit_log.js          — Admin/student action log. admin_id stores the actor ID.
+    lead.js               — Financial module CRM lead capture.
+    article.js            — Financial module article/blog post.
+
+  ASSOCIATION ALIASES (critical — use these in include()):
+    PlacementDrive  → Company          as: "company"
+    Company         → PlacementDrive[] as: "drives"
+    Shortlist       → PlacementDrive   as: "drive"
+    Shortlist       ↔ Student[]        as: "students" (through ShortlistStudent)
+    Student         ↔ Shortlist[]      as: "shortlists" (through ShortlistStudent)
+    PlacementDrive  → InterviewRound[] as: "rounds"
+    InterviewRound  → PlacementDrive   as: "drive"
+    InterviewRound  → StudentRoundResult[] as: "results"
+    StudentRoundResult → InterviewRound as: "round"
+    Student         → StudentProfile   as: "profile"
+    Student         → Resume[]         as: "resumes"
+    Student         → Internship[]     as: "internships"
+    Student         → StudentProject[] as: "projects"
+    Student         → StudentLoginMeta (no alias)
+    Student         → AuthUser         (no alias)
+
+──────────────────────────────────────────────────────────────────────────────
+  src/routes/             — Route mounting registry
+──────────────────────────────────────────────────────────────────────────────
+  index.js                — THE SINGLE MOUNT POINT. All module routers are
+                            mounted here at their URL prefixes.
+                            When adding a new route module, register it here.
+  admin_students.js       — Compatibility shim → src/modules/admin/students/...
+  (other shims)           — Legacy shims pointing to module routes. Dead code.
+                            Safe to delete; they are never imported.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/shared/             — Cross-cutting concerns used by all modules
+──────────────────────────────────────────────────────────────────────────────
+  middleware/
+    auth.js               — requireAdmin, requireStudent, getScopedDepartment.
+                            Uses req.session.user (NOT req.user — never set).
+    csrf.js               — csrfMiddleware (global) + verifyCsrf (per-route).
+                            ⚠ Multipart requests bypass global check.
+                              Every multer route MUST call verifyCsrf explicitly.
+    flash.js              — addMessage(req, {type, text}) + flashMiddleware.
+    locals.js             — Injects COLLEGE_NAME, csrfToken etc. into res.locals.
+    errorHandler.js       — Global Express error handler.
+    rateLimit.js          — express-rate-limit configuration for auth routes.
+
+  services/
+    audit.service.js      — recordAuditLog({ adminId, action, targetTable,
+                              targetId, details }).
+                            ⚠ Always pass a named-params OBJECT, not positional args.
+                            For student actions: adminId = student_id string.
+    notification.service.js — Email notifications:
+                              notifyStudentShortlisted()
+                              notifyInterviewScheduled()
+                              notifyDriveResult()
+                              notifyPlacementStatusUpdated()
+    eligibility.service.js  — Checks if a student meets drive eligibility criteria.
+    offerConflict.service.js — acceptOffer(): marks student Placed, withdraws
+                               other applications. ⚠ BUG: Placement.findOrCreate
+                               uses non-existent fields company_name/placement_date.
+    logger.service.js       — Structured logging wrapper over recordAuditLog.
+
+  utils/
+    mailer.js             — sendMail({ to, subject, text, html }).
+                            Returns { ok, error, skipped } — always check .ok.
+    security.js           — randomToken(n), sha256Hex(str).
+    response.js           — Standardised JSON response helpers.
+
+  constants/              — Shared constant values (skill lists, branches, etc.)
+  index.js                — Re-exports shared utilities.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/middleware/         — App-level middleware (mounted in app.js)
+──────────────────────────────────────────────────────────────────────────────
+  flash.js                — Same as shared/middleware/flash.js (duplicate).
+  locals.js               — Same as shared/middleware/locals.js (duplicate).
+
+  ⚠ REDUNDANCY: src/middleware/ and src/shared/middleware/ serve the same purpose.
+    The files in src/middleware/ are legacy. src/shared/middleware/ is canonical.
+    When adding new middleware, always put it in src/shared/middleware/.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/utils/  src/services/  src/auth/  src/forms/
+──────────────────────────────────────────────────────────────────────────────
+  ⚠ LEGACY FOLDERS — These exist from an older structure and may contain
+    outdated code. The canonical locations are:
+      src/shared/utils/       (not src/utils/)
+      src/shared/services/    (not src/services/)
+      src/modules/auth/       (not src/auth/)
+    New code should NEVER go into src/utils/, src/services/, or src/auth/.
+
+──────────────────────────────────────────────────────────────────────────────
+  src/modules/            — Feature modules (domain-driven organisation)
+──────────────────────────────────────────────────────────────────────────────
+  Each module follows this pattern:
+    routes/           — Express router file(s). URL handlers.
+    controllers/      — Business logic called by routes (optional layer).
+    services/         — Reusable async operations (DB queries, file logic).
+    validations/      — Input validation functions.
+    middleware/       — Module-specific Express middleware.
+    index.js          — Exports { routes } (and other named exports).
+
+  modules/README.md   — Module structure documentation.
+
+  ── modules/auth/ ────────────────────────────────────────────────────────────
+  Purpose: Login, logout, session management, password reset.
+  Key files:
+    routes/auth.routes.js         — GET/POST /login/, /logout/,
+                                    /student/reset-password/ etc.
+    controllers/auth.controller.js — getLogin, postLogin, getLogout,
+                                     postForgotPassword etc.
+    services/djangoPbkdf2.service.js — Verifies Django-format PBKDF2 hashes.
+    services/credentials.service.js  — Password verification + caching.
+    validations/passwordPolicy.js    — Password strength rules.
+
+  ── modules/student/ ─────────────────────────────────────────────────────────
+  Purpose: Student-facing portal (their own profile, internships, projects,
+           resumes, dashboard).
+  Key files:
+    routes/student.routes.js         — /student/* routes (profile, dashboard).
+    routes/internship.routes.js      — /student/internships/* CRUD routes.
+    routes/project.routes.js         — /student/projects/* CRUD routes.
+    controllers/studentProfile.controller.js — buildTemplateStudent(),
+                                     getProfilePage(), postProfile(),
+                                     postResumeUpload(). Spreads student.toJSON()
+                                     so ALL model fields reach the template.
+    services/studentProfile.service.js — loadProfileBundle(), loadDashboardData(),
+                                     computeCompletion().
+                                     ⚠ BUG: loadDashboardData uses wrong association
+                                       accessors (rr.tracker_interview_round should
+                                       be rr.round; round?.placement_drive should be
+                                       round?.drive). Interview history always empty.
+    services/resume.service.js       — recordUploadedResume(), deleteResume(),
+                                     authorizeResumeAccess().
+    validations/studentProfile.validators.js — Profile form validation.
+    middleware/requireStudent.js     — Checks req.session.user exists and is not staff.
+
+  ── modules/admin/ ───────────────────────────────────────────────────────────
+  Purpose: Admin portal. Each sub-folder is one feature domain.
+  index.js exports all sub-module routes.
+
+    students/
+      routes/students.routes.js     — /students/* (list, add, import, delete,
+                                      profile view, placement update).
+                                      ⚠ BUG: StudentLoginMeta not imported —
+                                        ReferenceError on student delete.
+      routes/admin_internship.routes.js — Admin verify/manage student internships.
+
+    companies/
+      routes/companies.routes.js    — /companies/* (CRUD, drive management,
+                                      round configuration).
+                                      ⚠ BUG: drive edit drops technicalSkills field.
+
+    shortlists/
+      routes/shortlists.routes.js   — /shortlists (list, save, edit, remove student).
+                                      POST /shortlists/save — no trailing slash.
+
+    interviewRounds/
+      routes/interviewRounds.routes.js — /admin/interview-rounds/* (get rounds,
+                                        get student results, save result, add/delete
+                                        round, kundali).
+                                        ⚠ BUG: kundali uses wrong association
+                                          accessors; always shows "Unknown Company".
+                                        syncStudentStatus() — marks Placed when all
+                                        rounds qualified, uses drive.packageLPA.
+
+    placed/
+      routes/placed.routes.js       — /placed/ (placed students list with filters).
+                                      ⚠ BUG: Op.or/Op.and logic can leak unplaced
+                                        students when search + branch filter combined.
+
+    placements/
+      routes/placements.routes.js   — /placements/* (placement record management).
+                                      ⚠ BUG: POST /placements/add/ does not update
+                                        student placement_status.
+                                      ⚠ BUG: duplicate key in years where clause.
+                                      ⚠ BUG: `package` reserved word in destructuring.
+
+    jobs/
+      routes/jobs.routes.js         — /jobs/* (job posting CRUD).
+
+    applications/
+      routes/applications.routes.js — /applications/* (student-company application
+                                      tracking). LEGACY: mostly replaced by
+                                      shortlists + interview rounds flow.
+
+    reports/
+      routes/reports.routes.js      — /reports/ (placement statistics, exports).
+
+    notifications/
+      routes/notifications.routes.js — /admin/notifications/ (student activity feed
+                                       from audit_log + profile completion table).
+                                       Left panel: profile completion per student.
+                                       Right panel: live activity feed (updates,
+                                       uploads, project/internship changes).
+
+    auditLog/
+      routes/auditLog.routes.js     — /admin/audit-log/ (full audit trail viewer).
+
+    settings/
+      routes/settings.routes.js     — /settings/ (SMTP test, danger zone deletes).
+                                      ⚠ BUG: req.user.id crashes — use
+                                        req.session?.user?.id instead.
+                                      ⚠ BUG: wrong recordAuditLog call signature
+                                        at two places.
+                                      ⚠ BUG: StudentProfile.destroy uses student_id
+                                        instead of studentId.
+
+    studentLogins/
+      routes/studentLogins.routes.js — /admin/student-logins/:id/create and /resend.
+                                       Creates AuthUser + StudentLoginMeta for student.
+                                       Emails credentials; only exposes tempPassword
+                                       in response when email fails (SMTP not set).
+
+  ── modules/financial/ ───────────────────────────────────────────────────────
+  Purpose: Financial advisory tools (SIP calculator, lead capture, articles).
+  Mounted at routes for /calculators/*, /admin/leads, /regulatory-disclosure.
+  Not part of the core placement workflow.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+templates/   — Nunjucks HTML templates
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  base.html               — Master layout. Extends all pages.
+                            Includes: Bootstrap 5, Font Awesome, Choices.js.
+                            Contains: desktop sidebar nav + mobile offcanvas nav.
+                            CSRF token injected as {{ csrfToken }}.
+                            ⚠ /placements/ missing from desktop admin sidebar.
+                            ⚠ /terms, /privacy nav links have no matching routes.
+
+  tracker/                — All page templates
+    dashboard.html              — Admin dashboard (KPI cards, dept stats).
+    student_list.html           — Candidate directory with filters + add modal.
+                                  createStudentLogin() JS: success = toast only,
+                                  fail = credentials modal (never alert).
+    admin_student_profile.html  — Admin view of one student's full profile.
+    student_profile.html        — Student view of their own profile (read-only).
+    student_my_profile.html     — Student editable profile page.
+    placement_list.html         — Placed students table.
+    placed_list.html            — /placed/ page with stats + filters.
+    notifications.html          — Student activity feed + profile completion table.
+                                  No email sending panel (removed).
+    shortlists/
+      index.html                — Shortlist accordion with round results modal.
+                                  saveAllRounds() sends X-CSRF-Token header.
+                                  Detects "Placed" status and shows trophy toast.
+      edit.html                 — Edit shortlist name form.
+    company_list.html           — Company list.
+    company_detail.html         — Company + drives + rounds management.
+    application_list.html       — Application list (legacy module).
+    report_*.html               — Report pages.
+    settings.html               — Settings / danger zone page.
+    login.html, register.html   — Auth pages.
+    error.html                  — Error page (status, title, message variables).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFERENCE STRUCTURE  (mernt project — the target pattern)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The mernt reference project uses a flat src/ structure:
+  src/
+    app.js
+    server.js
+    config/         (database.js, env.js)
+    models/         (one file per model)
+    controllers/    (one file per domain)
+    routes/         (one file per domain)
+    services/       (one file per domain)
+    middleware/     (error.middleware.js, validation.middleware.js)
+    utils/          (generateToken.js)
+    validators/     (auth.validator.js)
+
+Our project uses a domain-module pattern (modules/admin/*, modules/student/*).
+This is intentional because the project is larger. The key principle is the same:
+  - config/       → configuration only
+  - models/       → data layer only
+  - routes/       → HTTP layer only (thin, delegates to controllers/services)
+  - controllers/  → orchestration (calls services, builds response)
+  - services/     → business logic (DB queries, file ops, emails)
+  - validators/   → input validation only
+  - middleware/   → Express middleware only
+  - utils/        → pure helper functions (no side effects)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHERE TO PUT NEW FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  New admin feature?
+    → src/modules/admin/<featureName>/routes/<featureName>.routes.js
+    → Register in src/modules/admin/index.js
+    → Mount in src/routes/index.js
+
+  New student-facing page?
+    → src/modules/student/routes/<featureName>.routes.js
+    → Register in src/modules/student/index.js
+    → Mount in src/routes/index.js
+
+  New DB model?
+    → src/db/models/<modelName>.js
+    → Add associations to src/db/models/index.js
+    → Export from index.js module.exports
+
+  New shared service (email, audit, etc.)?
+    → src/shared/services/<name>.service.js
+
+  New shared utility (pure function)?
+    → src/shared/utils/<name>.js
+
+  New middleware?
+    → src/shared/middleware/<name>.js
+
+  New template?
+    → templates/tracker/<name>.html
+    → Extend base.html: {% extends 'base.html' %}
+
+  New seed/migration script?
+    → scripts/<name>.js   (if one-time/utility)
+    → seed_students.js    (if it seeds test data for dev)
+
+  Config values?
+    → src/config/env.js   (add to the exports)
+    → .env.sample         (document the new key)
+    → NEVER hardcode in route or service files
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REDUNDANT / LEGACY PATHS TO CLEAN UP (do not add more files here)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  src/utils/          → use src/shared/utils/ instead
+  src/services/       → use src/shared/services/ instead
+  src/auth/           → use src/modules/auth/ instead
+  src/forms/          → use src/modules/<domain>/validations/ instead
+  src/middleware/     → use src/shared/middleware/ instead
+  src/routes/*.js     → shims only; canonical routes are in src/modules/
+
+  Root-level clutter (safe to delete when ready):
+    fix_templates.js, scan_templates.js, scratch_output.html,
+    test_app.js, test_db.js, test_render.js, RAMMap/
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KNOWN BUGS (quick reference — full details in project_audit.txt)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  CRITICAL:
+  [1] students.routes.js       — StudentLoginMeta not imported → crash on delete
+  [2] settings.routes.js       — req.user.id → TypeError (use req.session?.user?.id)
+  [3] studentProfile.service.js — wrong association accessors → interview history empty
+  [4] job.js model             — missing company_id field declaration
+  [5] offerConflict.service.js — Placement.findOrCreate uses non-existent fields
+
+  HIGH:
+  [6] settings.routes.js       — wrong recordAuditLog() call signature (positional args)
+  [7] settings.routes.js       — StudentProfile.destroy: student_id → studentId
+  [8] placed.routes.js         — Op.or/Op.and logic can include unplaced students
+  [9] placements.routes.js     — duplicate key in where clause, POST doesn't sync student
+  [10] companies.routes.js     — technicalSkills dropped on drive edit
+  [11] interviewRounds.routes.js — kundali accessor chain always returns "Unknown Company"
+
+  MEDIUM:
+  [12] auth.controller.js      — getLogout doesn't destroy session
+  [13] base.html               — /placements/ missing from desktop nav
+  [14] shortlists.routes.js    — Express 5 strict slash on /shortlists/save
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORE DATA FLOW (how the main placement pipeline works end-to-end)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. COMPANY SETUP
+     Admin → /companies/ → Create Company → Add PlacementDrive
+     Drive has: jobRole, interviewDate, minCGPA, packageLPA, numberOfOpenings
+     Admin adds InterviewRounds to the drive (Round 1, Round 2, ...)
+
+  2. SHORTLISTING
+     Admin → /students/ → checkbox select students → choose drive → Confirm
+     POST /shortlists/save → creates Shortlist + ShortlistStudent records
+     Email sent to each shortlisted student via notification.service
+
+  3. INTERVIEW ROUNDS
+     Admin → /shortlists/ → expand shortlist → click "Rounds" button for student
+     GET /admin/interview-rounds/:driveId/student-results/:studentId
+     Returns rounds with pre-filled dates from drive.interviewDate
+     Admin updates result (Passed/Rejected) per round
+     POST /admin/interview-rounds/save-result  (with X-CSRF-Token header)
+     syncStudentStatus() called after each save:
+       - Rejected in any round → placement_status = "Rejected in Interview"
+       - Passed round N → placement_status = "N Round Qualified"
+       - ALL rounds passed → placement_status = "Placed", sets placement_company,
+         placement_package, placement_year from the drive record
+
+  4. PLACED STUDENTS
+     Students with placement_status = "Placed" appear in /placed/
+     Admin can also manually update via /students/:pk/placement/
+     acceptOffer() in offerConflict.service.js handles offer + one-offer enforcement
+
+  5. STUDENT SELF-SERVICE
+     Student logs in → /student/profile/ (view) or /student/my-profile/ (edit)
+     Can add: internships, projects (LIVE or NORMAL), upload resume, update profile
+     All changes logged to AuditLog (action = STUDENT_PROFILE_UPDATED, etc.)
+     Visible to admin at /admin/notifications/
+
+================================================================================
+END OF PROJECT_STRUCTURE.txt
+================================================================================

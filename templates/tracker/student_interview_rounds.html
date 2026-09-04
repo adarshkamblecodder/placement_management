@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}Interview Rounds - {{ student.name }} - {{ COLLEGE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        {% if isAdmin %}
+        <a href="/students/{{ student.student_id }}/profile/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+        {% else %}
+        <a href="/student/profile/" class="btn btn-light border me-3"><i class="fas fa-arrow-left"></i></a>
+        {% endif %}
+        <div>
+            <h2 class="fw-bold mb-0" style="color: var(--text-main);">
+                <i class="fas fa-list-ol text-primary me-2"></i>Interview Rounds &amp; Performance
+            </h2>
+            <p class="text-muted small mb-0">Candidate: <strong>{{ student.name }}</strong> ({{ student.student_id }}) — {{ student.branch }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Student Quick Info Card -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm p-4 text-center">
+            {% if student.profile_photo %}
+            <img src="{{ student.profile_photo.url | default('/media/' ~ student.profile_photo) }}" class="rounded-circle mx-auto mb-3 shadow-sm" style="width: 110px; height: 110px; object-fit: cover;">
+            {% else %}
+            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3 text-secondary" style="width: 110px; height: 110px;">
+                <i class="fas fa-user-graduate fa-3x"></i>
+            </div>
+            {% endif %}
+            <h5 class="fw-bold mb-1">{{ student.name }}</h5>
+            <p class="text-muted small mb-3">{{ student.student_id }} &bull; {{ student.branch }} &bull; Year {{ student.year }}</p>
+            
+            <div class="text-start border-top pt-3">
+                <div class="d-flex justify-content-between py-1 small">
+                    <span class="text-muted">CGPA</span>
+                    <span class="fw-semibold">{{ student.cgpa | floatformat(2) }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-1 small">
+                    <span class="text-muted">Placement Status</span>
+                    <span class="badge {% if student.placement_status == 'Placed' %}bg-success{% else %}bg-secondary{% endif %}">{{ student.placement_status }}</span>
+                </div>
+                {% if student.placement_company %}
+                <div class="d-flex justify-content-between py-1 small">
+                    <span class="text-muted">Placed Company</span>
+                    <span class="fw-semibold">{{ student.placement_company }} ({{ student.placement_package }} LPA)</span>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between py-1 small">
+                    <span class="text-muted">Total Interview Rounds</span>
+                    <span class="fw-bold text-primary">{{ results.length }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Rounds Timeline & Table -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-slate-800">
+                    <i class="fas fa-history text-primary me-2"></i>Rounds Timeline &amp; Evaluations
+                </h6>
+                <span class="badge bg-primary bg-opacity-10 text-primary">{{ results.length }} recorded</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Company &amp; Role</th>
+                            <th>Round</th>
+                            <th>Interview Date</th>
+                            <th>Result</th>
+                            <th>Remarks / Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in results %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold" style="color: var(--primary);">{{ r.round.drive.company.name | default('Unknown Company') }}</div>
+                                <div class="small text-muted">{{ r.round.drive.jobRole | default('Drive #' ~ r.round.driveId) }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    Round {{ r.round.order | default(1) }}: {{ r.round.roundName | default('Round ' ~ r.roundId) }}
+                                </span>
+                            </td>
+                            <td class="small text-muted">
+                                <i class="far fa-calendar-alt me-1"></i>
+                                {{ r.interviewDate | formatDateDMY | default(r.round.roundDate | formatDateDMY | default(r.round.drive.interviewDate | formatDateDMY | default('TBD'))) }}
+                            </td>
+                            <td>
+                                {% if r.result == 'Qualified' or r.result == 'Passed' %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                                    <i class="fas fa-check-circle me-1"></i>{{ r.result }}
+                                </span>
+                                {% elif r.result == 'Rejected' %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                                    <i class="fas fa-times-circle me-1"></i>Rejected
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                                    <i class="far fa-clock me-1"></i>{{ r.result | default('Pending') }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted text-wrap" style="max-width: 280px;">
+                                {% if r.rejectionReason %}<div class="text-danger fw-semibold mb-1"><i class="fas fa-ban me-1"></i>{{ r.rejectionReason }}</div>{% endif %}
+                                {% if r.remarks %}<div class="mb-1">{{ r.remarks }}</div>{% endif %}
+                                {% if r.notes %}<div class="text-muted fst-italic">{{ r.notes }}</div>{% endif %}
+                                {% if not r.rejectionReason and not r.remarks and not r.notes %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        {% if not absenceRecords or absenceRecords.length == 0 %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-calendar-times fa-3x mb-3 d-block opacity-40"></i>
+                                <h5>No interview rounds found</h5>
+                                <p class="small text-muted mb-0">Rounds and interview assessments for this student will appear here.</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# ── Absent Interview Records ─────────────────────────────────────── #}
+        {% if absenceRecords and absenceRecords.length > 0 %}
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0" style="color: var(--text-main);">
+                    <i class="fas fa-user-slash text-warning me-2"></i>Absent Interview Records
+                </h6>
+                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                    {{ absenceRecords.length }} record{{ 's' if absenceRecords.length != 1 else '' }}
+                </span>
+            </div>
+            <div class="card-body p-0">
+                {% for a in absenceRecords %}
+                <div class="d-flex align-items-start gap-3 p-4 {% if not loop.last %}border-bottom{% endif %}">
+                    <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width: 42px; height: 42px;">
+                        <i class="fas fa-user-slash text-warning"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold mb-0" style="color: var(--text-main);">{{ a.companyName }}</div>
+                        <div class="text-muted small mb-2">{{ a.jobRole }}</div>
+                        {% if a.interviewDate %}
+                        <div class="small text-muted mb-2">
+                            <i class="far fa-calendar-alt me-1"></i>{{ a.interviewDate | formatDateDMY | default(a.interviewDate) }}
+                        </div>
+                        {% endif %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 mb-2">
+                            <i class="fas fa-user-slash me-1"></i>Absent
+                        </span>
+                        <div class="small text-muted fst-italic mt-1">
+                            You were absent for this interview.
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# Show empty state only when there are no results AND no absences #}
+        {% if (not results or results.length == 0) and (not absenceRecords or absenceRecords.length == 0) %}
+        <div class="card border-0 shadow-sm mt-2">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="fas fa-calendar-times fa-3x mb-3 d-block opacity-40"></i>
+                <h5>No interview rounds found</h5>
+                <p class="small mb-0">Rounds and interview assessments will appear here once recorded.</p>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
