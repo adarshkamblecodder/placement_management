@@ -8,7 +8,6 @@ const { flashMiddleware } = require("./middleware/flash");
 const { localsMiddleware } = require("./middleware/locals");
 const { csrfMiddleware } = require("./shared/middleware/csrf");
 const routes = require("./routes");
-
 const { ensureEnvLoaded } = require("./config/env");
 
 function createApp() {
@@ -27,9 +26,24 @@ function createApp() {
 
   app.use(cookieParser());
 
+  // Session store — use PostgreSQL in production to persist sessions across
+  // restarts and avoid the MemoryStore warning. Falls back to MemoryStore
+  // in development where no DATABASE_URL is set.
+  let sessionStore;
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+    const pgSession = require("connect-pg-simple")(session);
+    sessionStore = new pgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: "session",
+      createTableIfMissing: true,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+
   // Session-based auth replacement for Django sessions.
   app.use(
     session({
+      store: sessionStore,
       secret: process.env.SECRET_KEY || "dev-secret-key-change-me",
       resave: false,
       saveUninitialized: false,
@@ -37,6 +51,7 @@ function createApp() {
         httpOnly: true,
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         secure: process.env.NODE_ENV === "production",
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
     })
   );
