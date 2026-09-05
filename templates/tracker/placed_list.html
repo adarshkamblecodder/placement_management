@@ -107,6 +107,7 @@
         <tr>
           <td class="text-muted small">{{ loop.index }}</td>
           <td>
+            <a href="/students/{{ student.student_id }}/profile/" title="View profile">
             {% if student.profile_photo %}
             <img src="/media/{{ student.profile_photo }}" class="rounded-circle" style="width:38px;height:38px;object-fit:cover;">
             {% else %}
@@ -114,11 +115,16 @@
               <i class="fas fa-user text-muted"></i>
             </div>
             {% endif %}
+            </a>
           </td>
           <td>
             <span class="badge bg-light text-dark border font-monospace">{{ student.student_id | default('-') }}</span>
           </td>
-          <td class="fw-semibold">{{ student.name | default('-') }}</td>
+          <td class="fw-semibold">
+            <a href="/students/{{ student.student_id }}/profile/" class="text-decoration-none text-reset hover-primary">
+              {{ student.name | default('-') }}
+            </a>
+          </td>
           <td>
             {% if student.branch %}
             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">{{ student.branch }}</span>
