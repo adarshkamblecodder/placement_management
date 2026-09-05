@@ -16,6 +16,11 @@ function createApp() {
 
   const app = express();
 
+  // Railway (and most cloud platforms) sit behind a reverse proxy.
+  // This tells Express to trust the X-Forwarded-* headers so that
+  // secure cookies and req.protocol work correctly over HTTPS.
+  app.set("trust proxy", 1);
+
   // Body parsing (Django used form posts + file uploads; multer will be wired later).
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
@@ -30,7 +35,7 @@ function createApp() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         secure: process.env.NODE_ENV === "production",
       },
     })
@@ -159,27 +164,26 @@ function createApp() {
       // eslint-disable-next-line no-console
       console.log("Sequelize connected and synced successfully");
       
-      // Auto-seed admin user in development mode only to facilitate initial local testing
-      if (process.env.NODE_ENV !== "production") {
-        const { AuthUser } = require("./db/models");
-        const { hashDjangoPassword } = require("./modules/auth/services/djangoPbkdf2.service");
-        return AuthUser.findOne({ where: { username: "admin" } }).then(async admin => {
-          if (!admin) {
-            const hashed = await hashDjangoPassword("admin123", { digest: "sha256", iterations: 1200000, saltLength: 22 });
-            return AuthUser.create({
-              username: "admin", 
-              password: hashed, 
-              is_staff: true, 
-              is_superuser: true, 
-              is_active: true, 
-              first_name: "Admin", 
-              last_name: "User", 
-              email: "admin@college.edu", 
-              date_joined: new Date()
-            }).then(() => console.log("Auto-seeded dev admin account! Username: admin | Password: admin123"));
-          }
-        });
-      }
+      // Auto-seed admin user if no admin exists yet — runs in all environments
+      // so the first deployment on a fresh database always has a working login.
+      const { AuthUser } = require("./db/models");
+      const { hashDjangoPassword } = require("./modules/auth/services/djangoPbkdf2.service");
+      return AuthUser.findOne({ where: { username: "admin" } }).then(async admin => {
+        if (!admin) {
+          const hashed = await hashDjangoPassword("admin123", { digest: "sha256", iterations: 1200000, saltLength: 22 });
+          return AuthUser.create({
+            username: "admin",
+            password: hashed,
+            is_staff: true,
+            is_superuser: true,
+            is_active: true,
+            first_name: "Admin",
+            last_name: "User",
+            email: "admin@college.edu",
+            date_joined: new Date()
+          }).then(() => console.log("Admin account created. Username: admin | Password: admin123"));
+        }
+      });
     })
     .catch((err) => {
       // eslint-disable-next-line no-console
